@@ -289,7 +289,7 @@ mod tests {
             .filter(|text| Lang::En.tr(text) == text.as_str())
             .collect();
 
-        assert!(texts.len() > 15, "help scan should find the texts");
+        assert!(texts.iter().any(|text| text.contains("사용량 조회")));
         assert!(missing.is_empty(), "missing english: {missing:?}");
     }
 

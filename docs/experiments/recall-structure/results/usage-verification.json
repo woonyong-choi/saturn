@@ -1,0 +1,1985 @@
+{
+  "verified_runs": 396,
+  "runs": [
+    {
+      "run": "claude-audit-16-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 40057
+    },
+    {
+      "run": "claude-audit-16-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27723
+    },
+    {
+      "run": "claude-audit-16-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 40824
+    },
+    {
+      "run": "claude-audit-16-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 40083
+    },
+    {
+      "run": "claude-audit-16-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27725
+    },
+    {
+      "run": "claude-audit-16-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 40896
+    },
+    {
+      "run": "claude-audit-16-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 40107
+    },
+    {
+      "run": "claude-audit-16-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27732
+    },
+    {
+      "run": "claude-audit-16-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 40793
+    },
+    {
+      "run": "claude-audit-26-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 41865
+    },
+    {
+      "run": "claude-audit-26-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 28333
+    },
+    {
+      "run": "claude-audit-26-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 42248
+    },
+    {
+      "run": "claude-audit-26-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 41859
+    },
+    {
+      "run": "claude-audit-26-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 28331
+    },
+    {
+      "run": "claude-audit-26-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 42241
+    },
+    {
+      "run": "claude-audit-26-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 41856
+    },
+    {
+      "run": "claude-audit-26-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 28332
+    },
+    {
+      "run": "claude-audit-26-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 42197
+    },
+    {
+      "run": "claude-audit-8-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27299
+    },
+    {
+      "run": "claude-audit-8-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 20996
+    },
+    {
+      "run": "claude-audit-8-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27841
+    },
+    {
+      "run": "claude-audit-8-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27357
+    },
+    {
+      "run": "claude-audit-8-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 20997
+    },
+    {
+      "run": "claude-audit-8-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27870
+    },
+    {
+      "run": "claude-audit-8-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27316
+    },
+    {
+      "run": "claude-audit-8-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 20993
+    },
+    {
+      "run": "claude-audit-8-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27870
+    },
+    {
+      "run": "claude-design-chain-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27534
+    },
+    {
+      "run": "claude-design-chain-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 20499
+    },
+    {
+      "run": "claude-design-chain-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27533
+    },
+    {
+      "run": "claude-design-chain-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27498
+    },
+    {
+      "run": "claude-design-chain-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 20515
+    },
+    {
+      "run": "claude-design-chain-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27516
+    },
+    {
+      "run": "claude-design-chain-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27580
+    },
+    {
+      "run": "claude-design-chain-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 20507
+    },
+    {
+      "run": "claude-design-chain-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 27638
+    },
+    {
+      "run": "claude-document-permissions-batch-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11366
+    },
+    {
+      "run": "claude-document-permissions-batch-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11252
+    },
+    {
+      "run": "claude-document-permissions-batch-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11684
+    },
+    {
+      "run": "claude-document-permissions-batch-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11406
+    },
+    {
+      "run": "claude-document-permissions-batch-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11253
+    },
+    {
+      "run": "claude-document-permissions-batch-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11641
+    },
+    {
+      "run": "claude-document-permissions-batch-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11383
+    },
+    {
+      "run": "claude-document-permissions-batch-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11269
+    },
+    {
+      "run": "claude-document-permissions-batch-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11623
+    },
+    {
+      "run": "claude-document-permissions-single-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11745
+    },
+    {
+      "run": "claude-document-permissions-single-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14394
+    },
+    {
+      "run": "claude-document-permissions-single-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14789
+    },
+    {
+      "run": "claude-document-permissions-single-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11728
+    },
+    {
+      "run": "claude-document-permissions-single-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14389
+    },
+    {
+      "run": "claude-document-permissions-single-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14778
+    },
+    {
+      "run": "claude-document-permissions-single-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11712
+    },
+    {
+      "run": "claude-document-permissions-single-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14394
+    },
+    {
+      "run": "claude-document-permissions-single-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14797
+    },
+    {
+      "run": "claude-document-records-batch-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11303
+    },
+    {
+      "run": "claude-document-records-batch-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12112
+    },
+    {
+      "run": "claude-document-records-batch-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12510
+    },
+    {
+      "run": "claude-document-records-batch-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11345
+    },
+    {
+      "run": "claude-document-records-batch-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12104
+    },
+    {
+      "run": "claude-document-records-batch-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12536
+    },
+    {
+      "run": "claude-document-records-batch-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11319
+    },
+    {
+      "run": "claude-document-records-batch-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12108
+    },
+    {
+      "run": "claude-document-records-batch-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12531
+    },
+    {
+      "run": "claude-document-records-single-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11635
+    },
+    {
+      "run": "claude-document-records-single-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 13751
+    },
+    {
+      "run": "claude-document-records-single-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14154
+    },
+    {
+      "run": "claude-document-records-single-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11633
+    },
+    {
+      "run": "claude-document-records-single-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 13758
+    },
+    {
+      "run": "claude-document-records-single-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14190
+    },
+    {
+      "run": "claude-document-records-single-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11605
+    },
+    {
+      "run": "claude-document-records-single-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 13770
+    },
+    {
+      "run": "claude-document-records-single-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14166
+    },
+    {
+      "run": "claude-document-router-key-security-batch-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11423
+    },
+    {
+      "run": "claude-document-router-key-security-batch-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10740
+    },
+    {
+      "run": "claude-document-router-key-security-batch-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11194
+    },
+    {
+      "run": "claude-document-router-key-security-batch-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11377
+    },
+    {
+      "run": "claude-document-router-key-security-batch-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10747
+    },
+    {
+      "run": "claude-document-router-key-security-batch-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11125
+    },
+    {
+      "run": "claude-document-router-key-security-batch-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11437
+    },
+    {
+      "run": "claude-document-router-key-security-batch-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10722
+    },
+    {
+      "run": "claude-document-router-key-security-batch-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11131
+    },
+    {
+      "run": "claude-document-router-key-security-single-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11679
+    },
+    {
+      "run": "claude-document-router-key-security-single-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 13882
+    },
+    {
+      "run": "claude-document-router-key-security-single-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14284
+    },
+    {
+      "run": "claude-document-router-key-security-single-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11648
+    },
+    {
+      "run": "claude-document-router-key-security-single-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 13881
+    },
+    {
+      "run": "claude-document-router-key-security-single-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14268
+    },
+    {
+      "run": "claude-document-router-key-security-single-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11653
+    },
+    {
+      "run": "claude-document-router-key-security-single-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 13881
+    },
+    {
+      "run": "claude-document-router-key-security-single-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14276
+    },
+    {
+      "run": "claude-document-settings-batch-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10924
+    },
+    {
+      "run": "claude-document-settings-batch-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10508
+    },
+    {
+      "run": "claude-document-settings-batch-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10886
+    },
+    {
+      "run": "claude-document-settings-batch-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10895
+    },
+    {
+      "run": "claude-document-settings-batch-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10512
+    },
+    {
+      "run": "claude-document-settings-batch-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10899
+    },
+    {
+      "run": "claude-document-settings-batch-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10886
+    },
+    {
+      "run": "claude-document-settings-batch-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10519
+    },
+    {
+      "run": "claude-document-settings-batch-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10896
+    },
+    {
+      "run": "claude-document-settings-single-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11509
+    },
+    {
+      "run": "claude-document-settings-single-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14423
+    },
+    {
+      "run": "claude-document-settings-single-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14798
+    },
+    {
+      "run": "claude-document-settings-single-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11521
+    },
+    {
+      "run": "claude-document-settings-single-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14438
+    },
+    {
+      "run": "claude-document-settings-single-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14862
+    },
+    {
+      "run": "claude-document-settings-single-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11527
+    },
+    {
+      "run": "claude-document-settings-single-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14432
+    },
+    {
+      "run": "claude-document-settings-single-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 14808
+    },
+    {
+      "run": "claude-heldout-extensions-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10754
+    },
+    {
+      "run": "claude-heldout-extensions-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10508
+    },
+    {
+      "run": "claude-heldout-extensions-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10957
+    },
+    {
+      "run": "claude-heldout-extensions-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10786
+    },
+    {
+      "run": "claude-heldout-extensions-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10502
+    },
+    {
+      "run": "claude-heldout-extensions-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10961
+    },
+    {
+      "run": "claude-heldout-extensions-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10740
+    },
+    {
+      "run": "claude-heldout-extensions-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10502
+    },
+    {
+      "run": "claude-heldout-extensions-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 10978
+    },
+    {
+      "run": "claude-heldout-input-requests-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 26275
+    },
+    {
+      "run": "claude-heldout-input-requests-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 18180
+    },
+    {
+      "run": "claude-heldout-input-requests-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 26277
+    },
+    {
+      "run": "claude-heldout-input-requests-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 26217
+    },
+    {
+      "run": "claude-heldout-input-requests-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 18186
+    },
+    {
+      "run": "claude-heldout-input-requests-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 26221
+    },
+    {
+      "run": "claude-heldout-input-requests-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 26225
+    },
+    {
+      "run": "claude-heldout-input-requests-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 18183
+    },
+    {
+      "run": "claude-heldout-input-requests-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 26251
+    },
+    {
+      "run": "claude-interruption-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 24944
+    },
+    {
+      "run": "claude-interruption-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 19062
+    },
+    {
+      "run": "claude-interruption-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 25490
+    },
+    {
+      "run": "claude-interruption-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 25077
+    },
+    {
+      "run": "claude-interruption-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 19057
+    },
+    {
+      "run": "claude-interruption-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 25446
+    },
+    {
+      "run": "claude-interruption-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 25017
+    },
+    {
+      "run": "claude-interruption-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 19068
+    },
+    {
+      "run": "claude-interruption-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 25568
+    },
+    {
+      "run": "claude-learning-12-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 22796
+    },
+    {
+      "run": "claude-learning-12-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 17058
+    },
+    {
+      "run": "claude-learning-12-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 22843
+    },
+    {
+      "run": "claude-learning-12-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 22787
+    },
+    {
+      "run": "claude-learning-12-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 17049
+    },
+    {
+      "run": "claude-learning-12-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 22975
+    },
+    {
+      "run": "claude-learning-12-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 22801
+    },
+    {
+      "run": "claude-learning-12-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 17055
+    },
+    {
+      "run": "claude-learning-12-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 22801
+    },
+    {
+      "run": "claude-learning-30-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 34023
+    },
+    {
+      "run": "claude-learning-30-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 22986
+    },
+    {
+      "run": "claude-learning-30-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 34036
+    },
+    {
+      "run": "claude-learning-30-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 33930
+    },
+    {
+      "run": "claude-learning-30-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 23000
+    },
+    {
+      "run": "claude-learning-30-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 33916
+    },
+    {
+      "run": "claude-learning-30-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 34010
+    },
+    {
+      "run": "claude-learning-30-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 22983
+    },
+    {
+      "run": "claude-learning-30-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 33926
+    },
+    {
+      "run": "claude-learning-59-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 35752
+    },
+    {
+      "run": "claude-learning-59-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 24767
+    },
+    {
+      "run": "claude-learning-59-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 36007
+    },
+    {
+      "run": "claude-learning-59-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 35668
+    },
+    {
+      "run": "claude-learning-59-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 24768
+    },
+    {
+      "run": "claude-learning-59-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 36074
+    },
+    {
+      "run": "claude-learning-59-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 35672
+    },
+    {
+      "run": "claude-learning-59-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 24775
+    },
+    {
+      "run": "claude-learning-59-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 36001
+    },
+    {
+      "run": "claude-notes-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9368
+    },
+    {
+      "run": "claude-notes-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 8804
+    },
+    {
+      "run": "claude-notes-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9359
+    },
+    {
+      "run": "claude-notes-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9368
+    },
+    {
+      "run": "claude-notes-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 8819
+    },
+    {
+      "run": "claude-notes-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9372
+    },
+    {
+      "run": "claude-notes-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9361
+    },
+    {
+      "run": "claude-notes-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 8798
+    },
+    {
+      "run": "claude-notes-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9377
+    },
+    {
+      "run": "claude-regression-engine-lifecycle-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11810
+    },
+    {
+      "run": "claude-regression-engine-lifecycle-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11996
+    },
+    {
+      "run": "claude-regression-engine-lifecycle-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12413
+    },
+    {
+      "run": "claude-regression-engine-lifecycle-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11814
+    },
+    {
+      "run": "claude-regression-engine-lifecycle-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11992
+    },
+    {
+      "run": "claude-regression-engine-lifecycle-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12412
+    },
+    {
+      "run": "claude-regression-engine-lifecycle-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11874
+    },
+    {
+      "run": "claude-regression-engine-lifecycle-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11998
+    },
+    {
+      "run": "claude-regression-engine-lifecycle-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12417
+    },
+    {
+      "run": "claude-regression-input-handling-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11928
+    },
+    {
+      "run": "claude-regression-input-handling-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11974
+    },
+    {
+      "run": "claude-regression-input-handling-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12377
+    },
+    {
+      "run": "claude-regression-input-handling-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11867
+    },
+    {
+      "run": "claude-regression-input-handling-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11951
+    },
+    {
+      "run": "claude-regression-input-handling-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12390
+    },
+    {
+      "run": "claude-regression-input-handling-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11887
+    },
+    {
+      "run": "claude-regression-input-handling-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 11949
+    },
+    {
+      "run": "claude-regression-input-handling-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 12403
+    },
+    {
+      "run": "claude-relay-r1-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9878
+    },
+    {
+      "run": "claude-relay-r1-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9172
+    },
+    {
+      "run": "claude-relay-r1-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9875
+    },
+    {
+      "run": "claude-relay-r2-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9885
+    },
+    {
+      "run": "claude-relay-r2-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9188
+    },
+    {
+      "run": "claude-relay-r2-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9976
+    },
+    {
+      "run": "claude-relay-r3-baseline",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9880
+    },
+    {
+      "run": "claude-relay-r3-joint",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9178
+    },
+    {
+      "run": "claude-relay-r3-repaired",
+      "source": "native cumulative modelUsage",
+      "input_tokens": 9880
+    },
+    {
+      "run": "codex-audit-16-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 50542
+    },
+    {
+      "run": "codex-audit-16-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 43418
+    },
+    {
+      "run": "codex-audit-16-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 50954
+    },
+    {
+      "run": "codex-audit-16-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 50538
+    },
+    {
+      "run": "codex-audit-16-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 43422
+    },
+    {
+      "run": "codex-audit-16-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 50954
+    },
+    {
+      "run": "codex-audit-16-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 50538
+    },
+    {
+      "run": "codex-audit-16-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 43422
+    },
+    {
+      "run": "codex-audit-16-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 50946
+    },
+    {
+      "run": "codex-audit-26-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 51658
+    },
+    {
+      "run": "codex-audit-26-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 43845
+    },
+    {
+      "run": "codex-audit-26-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 51901
+    },
+    {
+      "run": "codex-audit-26-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 51662
+    },
+    {
+      "run": "codex-audit-26-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 43857
+    },
+    {
+      "run": "codex-audit-26-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 51897
+    },
+    {
+      "run": "codex-audit-26-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 51662
+    },
+    {
+      "run": "codex-audit-26-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 43845
+    },
+    {
+      "run": "codex-audit-26-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 51909
+    },
+    {
+      "run": "codex-audit-8-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 43445
+    },
+    {
+      "run": "codex-audit-8-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 39730
+    },
+    {
+      "run": "codex-audit-8-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 43757
+    },
+    {
+      "run": "codex-audit-8-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 43445
+    },
+    {
+      "run": "codex-audit-8-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 39722
+    },
+    {
+      "run": "codex-audit-8-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 43757
+    },
+    {
+      "run": "codex-audit-8-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 43449
+    },
+    {
+      "run": "codex-audit-8-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 39722
+    },
+    {
+      "run": "codex-audit-8-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 43753
+    },
+    {
+      "run": "codex-design-chain-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 44117
+    },
+    {
+      "run": "codex-design-chain-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 39741
+    },
+    {
+      "run": "codex-design-chain-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 44113
+    },
+    {
+      "run": "codex-design-chain-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 44113
+    },
+    {
+      "run": "codex-design-chain-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 39745
+    },
+    {
+      "run": "codex-design-chain-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 44101
+    },
+    {
+      "run": "codex-design-chain-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 44105
+    },
+    {
+      "run": "codex-design-chain-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 39741
+    },
+    {
+      "run": "codex-design-chain-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 44101
+    },
+    {
+      "run": "codex-document-permissions-batch-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34157
+    },
+    {
+      "run": "codex-document-permissions-batch-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34103
+    },
+    {
+      "run": "codex-document-permissions-batch-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34381
+    },
+    {
+      "run": "codex-document-permissions-batch-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34165
+    },
+    {
+      "run": "codex-document-permissions-batch-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34103
+    },
+    {
+      "run": "codex-document-permissions-batch-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34393
+    },
+    {
+      "run": "codex-document-permissions-batch-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34161
+    },
+    {
+      "run": "codex-document-permissions-batch-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34099
+    },
+    {
+      "run": "codex-document-permissions-batch-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34385
+    },
+    {
+      "run": "codex-document-permissions-single-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34408
+    },
+    {
+      "run": "codex-document-permissions-single-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 36009
+    },
+    {
+      "run": "codex-document-permissions-single-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 36291
+    },
+    {
+      "run": "codex-document-permissions-single-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34404
+    },
+    {
+      "run": "codex-document-permissions-single-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 36009
+    },
+    {
+      "run": "codex-document-permissions-single-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 36283
+    },
+    {
+      "run": "codex-document-permissions-single-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34408
+    },
+    {
+      "run": "codex-document-permissions-single-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 36005
+    },
+    {
+      "run": "codex-document-permissions-single-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 36287
+    },
+    {
+      "run": "codex-document-records-batch-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34155
+    },
+    {
+      "run": "codex-document-records-batch-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34569
+    },
+    {
+      "run": "codex-document-records-batch-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34872
+    },
+    {
+      "run": "codex-document-records-batch-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34155
+    },
+    {
+      "run": "codex-document-records-batch-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34577
+    },
+    {
+      "run": "codex-document-records-batch-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34868
+    },
+    {
+      "run": "codex-document-records-batch-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34155
+    },
+    {
+      "run": "codex-document-records-batch-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34577
+    },
+    {
+      "run": "codex-document-records-batch-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34868
+    },
+    {
+      "run": "codex-document-records-single-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34251
+    },
+    {
+      "run": "codex-document-records-single-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 35609
+    },
+    {
+      "run": "codex-document-records-single-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 35904
+    },
+    {
+      "run": "codex-document-records-single-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34251
+    },
+    {
+      "run": "codex-document-records-single-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 35609
+    },
+    {
+      "run": "codex-document-records-single-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 35912
+    },
+    {
+      "run": "codex-document-records-single-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34259
+    },
+    {
+      "run": "codex-document-records-single-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 35605
+    },
+    {
+      "run": "codex-document-records-single-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 35904
+    },
+    {
+      "run": "codex-document-router-key-security-batch-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34074
+    },
+    {
+      "run": "codex-document-router-key-security-batch-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 33642
+    },
+    {
+      "run": "codex-document-router-key-security-batch-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33934
+    },
+    {
+      "run": "codex-document-router-key-security-batch-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34078
+    },
+    {
+      "run": "codex-document-router-key-security-batch-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 33642
+    },
+    {
+      "run": "codex-document-router-key-security-batch-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33942
+    },
+    {
+      "run": "codex-document-router-key-security-batch-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34070
+    },
+    {
+      "run": "codex-document-router-key-security-batch-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 33646
+    },
+    {
+      "run": "codex-document-router-key-security-batch-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33938
+    },
+    {
+      "run": "codex-document-router-key-security-single-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34276
+    },
+    {
+      "run": "codex-document-router-key-security-single-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 35584
+    },
+    {
+      "run": "codex-document-router-key-security-single-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 35872
+    },
+    {
+      "run": "codex-document-router-key-security-single-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34268
+    },
+    {
+      "run": "codex-document-router-key-security-single-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 35580
+    },
+    {
+      "run": "codex-document-router-key-security-single-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 35872
+    },
+    {
+      "run": "codex-document-router-key-security-single-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34272
+    },
+    {
+      "run": "codex-document-router-key-security-single-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 35584
+    },
+    {
+      "run": "codex-document-router-key-security-single-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 35864
+    },
+    {
+      "run": "codex-document-settings-batch-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33838
+    },
+    {
+      "run": "codex-document-settings-batch-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 33557
+    },
+    {
+      "run": "codex-document-settings-batch-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33834
+    },
+    {
+      "run": "codex-document-settings-batch-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33838
+    },
+    {
+      "run": "codex-document-settings-batch-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 33557
+    },
+    {
+      "run": "codex-document-settings-batch-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33838
+    },
+    {
+      "run": "codex-document-settings-batch-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33834
+    },
+    {
+      "run": "codex-document-settings-batch-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 33557
+    },
+    {
+      "run": "codex-document-settings-batch-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33838
+    },
+    {
+      "run": "codex-document-settings-single-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34222
+    },
+    {
+      "run": "codex-document-settings-single-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 35898
+    },
+    {
+      "run": "codex-document-settings-single-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 36179
+    },
+    {
+      "run": "codex-document-settings-single-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34218
+    },
+    {
+      "run": "codex-document-settings-single-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 35898
+    },
+    {
+      "run": "codex-document-settings-single-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 36175
+    },
+    {
+      "run": "codex-document-settings-single-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34222
+    },
+    {
+      "run": "codex-document-settings-single-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 35890
+    },
+    {
+      "run": "codex-document-settings-single-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 36175
+    },
+    {
+      "run": "codex-heldout-extensions-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33717
+    },
+    {
+      "run": "codex-heldout-extensions-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 33536
+    },
+    {
+      "run": "codex-heldout-extensions-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33840
+    },
+    {
+      "run": "codex-heldout-extensions-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33713
+    },
+    {
+      "run": "codex-heldout-extensions-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 33532
+    },
+    {
+      "run": "codex-heldout-extensions-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33840
+    },
+    {
+      "run": "codex-heldout-extensions-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33713
+    },
+    {
+      "run": "codex-heldout-extensions-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 33536
+    },
+    {
+      "run": "codex-heldout-extensions-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33840
+    },
+    {
+      "run": "codex-heldout-input-requests-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 43579
+    },
+    {
+      "run": "codex-heldout-input-requests-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 38472
+    },
+    {
+      "run": "codex-heldout-input-requests-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 43589
+    },
+    {
+      "run": "codex-heldout-input-requests-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 43575
+    },
+    {
+      "run": "codex-heldout-input-requests-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 38472
+    },
+    {
+      "run": "codex-heldout-input-requests-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 43581
+    },
+    {
+      "run": "codex-heldout-input-requests-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 43583
+    },
+    {
+      "run": "codex-heldout-input-requests-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 38472
+    },
+    {
+      "run": "codex-heldout-input-requests-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 43585
+    },
+    {
+      "run": "codex-interruption-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 42630
+    },
+    {
+      "run": "codex-interruption-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 38850
+    },
+    {
+      "run": "codex-interruption-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 42960
+    },
+    {
+      "run": "codex-interruption-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 42638
+    },
+    {
+      "run": "codex-interruption-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 38850
+    },
+    {
+      "run": "codex-interruption-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 42972
+    },
+    {
+      "run": "codex-interruption-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 42634
+    },
+    {
+      "run": "codex-interruption-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 38846
+    },
+    {
+      "run": "codex-interruption-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 42960
+    },
+    {
+      "run": "codex-learning-12-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 41236
+    },
+    {
+      "run": "codex-learning-12-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 37617
+    },
+    {
+      "run": "codex-learning-12-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 41240
+    },
+    {
+      "run": "codex-learning-12-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 41244
+    },
+    {
+      "run": "codex-learning-12-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 37613
+    },
+    {
+      "run": "codex-learning-12-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 41236
+    },
+    {
+      "run": "codex-learning-12-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 41240
+    },
+    {
+      "run": "codex-learning-12-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 37617
+    },
+    {
+      "run": "codex-learning-12-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 41240
+    },
+    {
+      "run": "codex-learning-30-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 48598
+    },
+    {
+      "run": "codex-learning-30-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 41545
+    },
+    {
+      "run": "codex-learning-30-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 48594
+    },
+    {
+      "run": "codex-learning-30-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 48598
+    },
+    {
+      "run": "codex-learning-30-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 41537
+    },
+    {
+      "run": "codex-learning-30-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 48602
+    },
+    {
+      "run": "codex-learning-30-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 48602
+    },
+    {
+      "run": "codex-learning-30-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 41541
+    },
+    {
+      "run": "codex-learning-30-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 48594
+    },
+    {
+      "run": "codex-learning-59-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 49572
+    },
+    {
+      "run": "codex-learning-59-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 42639
+    },
+    {
+      "run": "codex-learning-59-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 49844
+    },
+    {
+      "run": "codex-learning-59-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 49580
+    },
+    {
+      "run": "codex-learning-59-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 42631
+    },
+    {
+      "run": "codex-learning-59-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 49836
+    },
+    {
+      "run": "codex-learning-59-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 49572
+    },
+    {
+      "run": "codex-learning-59-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 42639
+    },
+    {
+      "run": "codex-learning-59-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 49836
+    },
+    {
+      "run": "codex-notes-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33137
+    },
+    {
+      "run": "codex-notes-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 32628
+    },
+    {
+      "run": "codex-notes-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33137
+    },
+    {
+      "run": "codex-notes-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33141
+    },
+    {
+      "run": "codex-notes-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 32632
+    },
+    {
+      "run": "codex-notes-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33141
+    },
+    {
+      "run": "codex-notes-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33145
+    },
+    {
+      "run": "codex-notes-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 32628
+    },
+    {
+      "run": "codex-notes-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33141
+    },
+    {
+      "run": "codex-regression-engine-lifecycle-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34377
+    },
+    {
+      "run": "codex-regression-engine-lifecycle-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34474
+    },
+    {
+      "run": "codex-regression-engine-lifecycle-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34782
+    },
+    {
+      "run": "codex-regression-engine-lifecycle-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34377
+    },
+    {
+      "run": "codex-regression-engine-lifecycle-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34482
+    },
+    {
+      "run": "codex-regression-engine-lifecycle-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34774
+    },
+    {
+      "run": "codex-regression-engine-lifecycle-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34373
+    },
+    {
+      "run": "codex-regression-engine-lifecycle-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34478
+    },
+    {
+      "run": "codex-regression-engine-lifecycle-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34790
+    },
+    {
+      "run": "codex-regression-input-handling-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34359
+    },
+    {
+      "run": "codex-regression-input-handling-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34355
+    },
+    {
+      "run": "codex-regression-input-handling-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34655
+    },
+    {
+      "run": "codex-regression-input-handling-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34363
+    },
+    {
+      "run": "codex-regression-input-handling-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34367
+    },
+    {
+      "run": "codex-regression-input-handling-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34659
+    },
+    {
+      "run": "codex-regression-input-handling-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 34355
+    },
+    {
+      "run": "codex-regression-input-handling-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 34359
+    },
+    {
+      "run": "codex-regression-input-handling-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 34663
+    },
+    {
+      "run": "codex-relay-r1-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33533
+    },
+    {
+      "run": "codex-relay-r1-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 32930
+    },
+    {
+      "run": "codex-relay-r1-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33545
+    },
+    {
+      "run": "codex-relay-r2-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33533
+    },
+    {
+      "run": "codex-relay-r2-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 32930
+    },
+    {
+      "run": "codex-relay-r2-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33533
+    },
+    {
+      "run": "codex-relay-r3-baseline",
+      "source": "native total and last token usage",
+      "input_tokens": 33537
+    },
+    {
+      "run": "codex-relay-r3-joint",
+      "source": "native total and last token usage",
+      "input_tokens": 32930
+    },
+    {
+      "run": "codex-relay-r3-repaired",
+      "source": "native total and last token usage",
+      "input_tokens": 33541
+    }
+  ]
+}

@@ -28,6 +28,14 @@ fn accepts(content: &str) -> bool {
     merged(&[(Layer::User, content)]).is_ok()
 }
 
+#[test]
+fn unimplemented_collect_mode_is_not_accepted_as_a_new_setting() {
+    assert!(accepts("[router]\nmode = \"manual\"\n"));
+    assert!(accepts("[router]\nmode = \"jev\"\n"));
+    assert!(accepts("[router]\nmode = \"saturn\"\n"));
+    assert!(!accepts("[router]\nmode = \"collect\"\n"));
+}
+
 /// 모든 스키마 키. provider 키는 `provider.<id>.` 뒤 경로에 `provider.codex.`를 붙여 센다.
 fn all_keys() -> Vec<(String, Kind)> {
     let mut keys: Vec<(String, Kind)> = SCHEMA

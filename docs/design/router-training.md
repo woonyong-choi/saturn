@@ -3,6 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
+| 실행 범위 | 빠른 조정과 결과 신호 기록만 연결됨. 아래 `/train`과 router 버전 화면은 구현 전 설계이며 현재 CLI·TUI 명령 목록에 없음 |
 | 관련 결정 | [판단 기록은 로컬에 쌓고 동의한 레코드만 서버로 올린다](../decisions/2026-09-29-local-first-judgment-collection.md), [판단 규격은 Saturn이 정하고 router는 중립 이름과 출처로 기록한다](../decisions/2026-09-29-vendor-neutral-router-spec.md) |
 
 ## 요약

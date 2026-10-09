@@ -1,0 +1,12 @@
+{
+  "path": ".local/archives/context-recall-20261007T164420Z.tar.gz",
+  "sha256": "0f33298108d08a2d93891200fc734af3e3f0a5cdfdc9192537c84a130fea6ade",
+  "files": 2543,
+  "responses": {
+    "balanced": 60,
+    "confirmation": 118,
+    "bounded": 60,
+    "replication": 40
+  },
+  "manifest_sha256": "4fb4e2ca35a146df436928e8443c84414b901fcfaaeaab3d9644d765348bc722"
+}

@@ -1,9 +1,5 @@
 .local/
-.gradle/
-.kotlin/
 .idea/
-build/
-out/
 .saturn/
 .env
 .env.*
@@ -11,3 +7,5 @@ out/
 .DS_Store
 /target/
 .runtime/
+__pycache__/
+.pytest_cache/

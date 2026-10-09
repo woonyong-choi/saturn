@@ -1,0 +1,314 @@
+{
+  "acceptance_margin": 0.2,
+  "answer_input_tokens": {
+    "fast": {
+      "max": 19342,
+      "mean": 18974.229167,
+      "min": 18855,
+      "sum": 910763
+    },
+    "full": {
+      "max": 18978,
+      "mean": 18778.416667,
+      "min": 18663,
+      "sum": 901364
+    },
+    "native": {
+      "max": 16868,
+      "mean": 16577.270833,
+      "min": 16355,
+      "sum": 795709
+    },
+    "packet": {
+      "max": 16977,
+      "mean": 16866.520833,
+      "min": 16751,
+      "sum": 809593
+    }
+  },
+  "attempted": 48,
+  "audit": {
+    "answer_tool_calls": 0,
+    "exact_scores_recomputed": 192,
+    "paired_ancestry_verified": 48
+  },
+  "bootstrap_replicates": 10000,
+  "claude_incremental_cost": {
+    "fast": {
+      "max": 0.07026900000000003,
+      "mean": 0.068775,
+      "min": 0.068101,
+      "sum": 3.301198
+    },
+    "full": {
+      "max": 0.06785899999999999,
+      "mean": 0.067057,
+      "min": 0.06661900000000001,
+      "sum": 3.218752
+    },
+    "native": {
+      "max": 0.13362500000000002,
+      "mean": 0.128147,
+      "min": 0.12101999999999999,
+      "sum": 6.151066
+    },
+    "packet": {
+      "max": 0.064863,
+      "mean": 0.061974,
+      "min": 0.059245,
+      "sum": 2.974768
+    }
+  },
+  "compaction": {
+    "fast": {
+      "duration_ms": {
+        "max": 592,
+        "mean": 308.604167,
+        "min": 217,
+        "sum": 14813
+      },
+      "post_tokens": {
+        "max": 3298,
+        "mean": 3236.270833,
+        "min": 3183,
+        "sum": 155341
+      },
+      "pre_tokens": {
+        "max": 19865,
+        "mean": 19665.416667,
+        "min": 19550,
+        "sum": 943940
+      }
+    },
+    "native": {
+      "duration_ms": {
+        "max": 19383,
+        "mean": 16314.875,
+        "min": 11669,
+        "sum": 783114
+      },
+      "post_tokens": {
+        "max": 2674,
+        "mean": 2428.854167,
+        "min": 2348,
+        "sum": 116585
+      },
+      "pre_tokens": {
+        "max": 19865,
+        "mean": 19665.416667,
+        "min": 19550,
+        "sum": 943940
+      }
+    }
+  },
+  "complete": 48,
+  "conditions": {
+    "fast": {
+      "hits": 48,
+      "n": 48,
+      "rate": 1.0,
+      "wilson95": [
+        0.9258998703338824,
+        0.9999999999999999
+      ]
+    },
+    "full": {
+      "hits": 48,
+      "n": 48,
+      "rate": 1.0,
+      "wilson95": [
+        0.9258998703338824,
+        0.9999999999999999
+      ]
+    },
+    "native": {
+      "hits": 48,
+      "n": 48,
+      "rate": 1.0,
+      "wilson95": [
+        0.9258998703338824,
+        0.9999999999999999
+      ]
+    },
+    "packet": {
+      "hits": 13,
+      "n": 48,
+      "rate": 0.2708333333333333,
+      "wilson95": [
+        0.1656595762745644,
+        0.40996964982240613
+      ]
+    }
+  },
+  "elapsed_ms": {
+    "fast": {
+      "max": 6356,
+      "mean": 3313.229167,
+      "min": 1802,
+      "sum": 159035
+    },
+    "full": {
+      "max": 3192,
+      "mean": 1859.708333,
+      "min": 1126,
+      "sum": 89266
+    },
+    "native": {
+      "max": 29506,
+      "mean": 19767.125,
+      "min": 14507,
+      "sum": 948822
+    },
+    "packet": {
+      "max": 6426,
+      "mean": 4176.479167,
+      "min": 1894,
+      "sum": 200471
+    }
+  },
+  "environment": {
+    "claude_version": "2.1.288 (Claude Code)",
+    "collector_wrapper_exit": 1,
+    "collector_wrapper_note": "collection completed; shell wrapper errored after all 48 rows were flushed; runner was edited during execution and outer zsh used read-only status variable",
+    "cpu": "arm",
+    "date_utc": "2026-10-05T13:35:27Z",
+    "fast_jev_commit": "e3f262a7f4d42bd8dd32ced30d26176f7cb545b0",
+    "handoff_design_commit": "7f8b01cf66d112cde4dd1c8441c9442985182710",
+    "hardware_model": "Mac16,13",
+    "memory_bytes": 25769803776,
+    "model_reported": "claude-sonnet-5-5",
+    "model_requested": "sonnet",
+    "os": "macOS-26.5.2-arm64-arm-64bit",
+    "packet_executable_sha256": "c17d36df78b508bef58499142fa3b84e0c19ed9fc5d9ca93ccd00c2ec29c3d43",
+    "persistent_design_commit": "dd24e0d",
+    "persistent_smoke_scenarios_excluded": 1,
+    "python": "3.9.6",
+    "saturn_commit": "116960c0f998331601bd992f335bfaf3afe49943",
+    "seed": 20261005
+  },
+  "errors": [],
+  "fast_dropped_calls": 288,
+  "fast_retained_calls": 96,
+  "hook_applied": 48,
+  "hook_fallbacks": 0,
+  "hypotheses": {
+    "H1": {
+      "accepted": false
+    },
+    "H2": {
+      "accepted": false
+    }
+  },
+  "manifest_sha256": "71f445b6aed5783c1ca0a83247b87bb1bd0dd874c4dc32219b86a1609908b72c",
+  "models": [
+    "claude-sonnet-5-5"
+  ],
+  "packet_included_calls": {
+    "max": 8,
+    "mean": 8.0,
+    "min": 8,
+    "sum": 384
+  },
+  "packet_ready_only": 35,
+  "packet_targets_present": 48,
+  "packet_tokens": {
+    "max": 2045,
+    "mean": 2045.0,
+    "min": 2045,
+    "sum": 98160
+  },
+  "paired": {
+    "fast_hook_only_minus_native": {
+      "a_only": 0,
+      "b_only": 0,
+      "ci95": [
+        0.0,
+        0.0
+      ],
+      "difference": 0.0,
+      "n": 48
+    },
+    "fast_minus_native": {
+      "a_only": 0,
+      "b_only": 0,
+      "ci95": [
+        0.0,
+        0.0
+      ],
+      "difference": 0.0,
+      "n": 48
+    },
+    "packet_minus_full": {
+      "a_only": 0,
+      "b_only": 35,
+      "ci95": [
+        -0.8541666666666666,
+        -0.6041666666666666
+      ],
+      "difference": -0.7291666666666666,
+      "n": 48
+    }
+  },
+  "planned": 48,
+  "position": {
+    "1": {
+      "fast": 6,
+      "full": 6,
+      "n": 6,
+      "native": 6,
+      "packet": 2
+    },
+    "2": {
+      "fast": 6,
+      "full": 6,
+      "n": 6,
+      "native": 6,
+      "packet": 2
+    },
+    "3": {
+      "fast": 6,
+      "full": 6,
+      "n": 6,
+      "native": 6,
+      "packet": 2
+    },
+    "4": {
+      "fast": 6,
+      "full": 6,
+      "n": 6,
+      "native": 6,
+      "packet": 0
+    },
+    "5": {
+      "fast": 6,
+      "full": 6,
+      "n": 6,
+      "native": 6,
+      "packet": 1
+    },
+    "6": {
+      "fast": 6,
+      "full": 6,
+      "n": 6,
+      "native": 6,
+      "packet": 3
+    },
+    "7": {
+      "fast": 6,
+      "full": 6,
+      "n": 6,
+      "native": 6,
+      "packet": 2
+    },
+    "8": {
+      "fast": 6,
+      "full": 6,
+      "n": 6,
+      "native": 6,
+      "packet": 1
+    }
+  },
+  "raw_file_count": 1153,
+  "raw_sha256": "ee5a9ff6e2a98562e6841138e96a4a61357ada54a1b48abde7a2e4785e7820d8",
+  "total_read_calls": 384
+}

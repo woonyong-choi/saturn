@@ -67,7 +67,7 @@ pub(crate) struct ReqwestTransport {
 }
 
 impl ReqwestTransport {
-    pub(super) fn new() -> Result<Self, reqwest::Error> {
+    pub(crate) fn new() -> Result<Self, reqwest::Error> {
         let client = reqwest::Client::builder()
             .https_only(true)
             .redirect(reqwest::redirect::Policy::none())

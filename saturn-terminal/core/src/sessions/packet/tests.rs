@@ -12,7 +12,7 @@ const AT_MS: i64 = 1_789_207_200_000;
 
 // 지시문이 먹는 토큰. 지시문을 뺀 기록 예산이 T = 4_000일 때와 같도록 T에 더한다.
 fn instruction_tokens() -> u64 {
-    estimate_tokens(&format!("{INSTRUCTION}{ITEM_SEPARATOR}"))
+    estimate_tokens(&format!("{INSTRUCTION}{ITEM_SEPARATOR}{ARCHIVE_END}"))
 }
 
 // 기록 몫이 T = 4_000 → P_max = 400 토큰(1_600자)일 때와 같다. 전송 가능 상한 P_send는 창에서 따로 정한다.
@@ -91,6 +91,8 @@ fn records(packet: &Packet) -> &str {
         .text
         .strip_prefix(&format!("{INSTRUCTION}{ITEM_SEPARATOR}"))
         .expect("packet should start with the instruction")
+        .strip_suffix(ARCHIVE_END)
+        .expect("packet should end with the archive boundary")
 }
 
 /// 재료 항목이 패킷에 들어간 모양과 빠진 이유.
@@ -229,7 +231,8 @@ fn build_packet_lookup_hint_only_when_the_option_is_on_and_an_original_was_cut()
     }
     let with = build(&cut, true);
     let without = build(&cut, false);
-    assert!(with.trim_end().ends_with("lists matching records."));
+    assert!(with.contains("lists matching records."));
+    assert!(with.ends_with(ARCHIVE_END));
     assert!(with.chars().count() <= without.chars().count() + 400);
 }
 
@@ -563,7 +566,7 @@ fn build_packet_drops_competing_when_it_would_cross_the_send_limit() {
         ..PacketSource::default()
     };
     let fixed = fixed_zone(&source);
-    let tight = budget_sending(estimate_send_tokens(&fixed) + 5);
+    let tight = budget_sending(estimate_send_tokens(&format!("{fixed}{ARCHIVE_END}")) + 5);
 
     let packet = ready(build_packet(&source, &tight));
 
@@ -736,6 +739,10 @@ fn leads_with_fixed_zone_accepts_a_packet_with_nothing_after_the_fixed_zone() {
     let fixed = fixed_zone(&source);
 
     assert!(leads_with_fixed_zone(&fixed, &fixed));
+    assert!(leads_with_fixed_zone(
+        &fixed,
+        &format!("{fixed}{ARCHIVE_END}")
+    ));
     assert!(!leads_with_fixed_zone(&fixed, &format!("{fixed}extra")));
 }
 
@@ -959,6 +966,7 @@ fn build_packet_starts_with_the_do_not_act_instruction() {
     let packet = ready(build_packet(&source, &budget()));
 
     assert!(packet.text.starts_with(INSTRUCTION));
+    assert!(packet.text.ends_with(ARCHIVE_END));
     assert!(INSTRUCTION.contains("do not call tools and do not change files"));
     assert!(INSTRUCTION.contains("wait for the next user input"));
 }

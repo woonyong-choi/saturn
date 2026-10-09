@@ -1,0 +1,297 @@
+{
+  "classification": "retrospective exploratory pilot; not preregistered independent validation",
+  "raw_responses_preserved": false,
+  "summary": {
+    "phase": "complete",
+    "cases": 400,
+    "ok": 399,
+    "status_counts": {
+      "ok": 399,
+      "failed": 1
+    },
+    "elapsed_seconds": 38.37,
+    "input_tokens": 3366298,
+    "output_tokens": 33029,
+    "estimated_usd": 0.141385,
+    "p50_seconds": 0.305,
+    "p95_seconds": 0.441,
+    "metrics": [
+      {
+        "arm": "baseline",
+        "auto": 0.8,
+        "ask": 0.7,
+        "precision": {
+          "k": 16,
+          "n": 27,
+          "value": 0.592593,
+          "ci95": [
+            0.407267,
+            0.754852
+          ]
+        },
+        "recall": {
+          "k": 16,
+          "n": 44,
+          "value": 0.363636,
+          "ci95": [
+            0.237835,
+            0.511336
+          ]
+        },
+        "combined_recall_assuming_perfect_user": {
+          "k": 24,
+          "n": 44,
+          "value": 0.545455,
+          "ci95": [
+            0.400662,
+            0.682948
+          ]
+        },
+        "ask_rate": {
+          "k": 26,
+          "n": 400,
+          "value": 0.065,
+          "ci95": [
+            0.04474,
+            0.093535
+          ]
+        },
+        "unknown_auto": 2
+      },
+      {
+        "arm": "baseline",
+        "auto": 0.9,
+        "ask": 0.7,
+        "precision": {
+          "k": 4,
+          "n": 7,
+          "value": 0.571429,
+          "ci95": [
+            0.250458,
+            0.84178
+          ]
+        },
+        "recall": {
+          "k": 4,
+          "n": 44,
+          "value": 0.090909,
+          "ci95": [
+            0.035922,
+            0.211592
+          ]
+        },
+        "combined_recall_assuming_perfect_user": {
+          "k": 24,
+          "n": 44,
+          "value": 0.545455,
+          "ci95": [
+            0.400662,
+            0.682948
+          ]
+        },
+        "ask_rate": {
+          "k": 48,
+          "n": 400,
+          "value": 0.12,
+          "ci95": [
+            0.091715,
+            0.155514
+          ]
+        },
+        "unknown_auto": 0
+      },
+      {
+        "arm": "korean",
+        "auto": 0.8,
+        "ask": 0.7,
+        "precision": {
+          "k": 8,
+          "n": 9,
+          "value": 0.888889,
+          "ci95": [
+            0.565,
+            0.980109
+          ]
+        },
+        "recall": {
+          "k": 8,
+          "n": 44,
+          "value": 0.181818,
+          "ci95": [
+            0.095128,
+            0.319606
+          ]
+        },
+        "combined_recall_assuming_perfect_user": {
+          "k": 17,
+          "n": 44,
+          "value": 0.386364,
+          "ci95": [
+            0.257212,
+            0.533764
+          ]
+        },
+        "ask_rate": {
+          "k": 15,
+          "n": 400,
+          "value": 0.0375,
+          "ci95": [
+            0.022855,
+            0.060944
+          ]
+        },
+        "unknown_auto": 0
+      },
+      {
+        "arm": "korean",
+        "auto": 0.9,
+        "ask": 0.7,
+        "precision": {
+          "k": 1,
+          "n": 1,
+          "value": 1,
+          "ci95": [
+            0.206549,
+            1
+          ]
+        },
+        "recall": {
+          "k": 1,
+          "n": 44,
+          "value": 0.022727,
+          "ci95": [
+            0.004023,
+            0.118077
+          ]
+        },
+        "combined_recall_assuming_perfect_user": {
+          "k": 17,
+          "n": 44,
+          "value": 0.386364,
+          "ci95": [
+            0.257212,
+            0.533764
+          ]
+        },
+        "ask_rate": {
+          "k": 23,
+          "n": 400,
+          "value": 0.0575,
+          "ci95": [
+            0.038618,
+            0.084801
+          ]
+        },
+        "unknown_auto": 0
+      },
+      {
+        "arm": "choice",
+        "auto": 0.8,
+        "ask": 0.7,
+        "precision": {
+          "k": 19,
+          "n": 27,
+          "value": 0.703704,
+          "ci95": [
+            0.515193,
+            0.84147
+          ]
+        },
+        "recall": {
+          "k": 19,
+          "n": 44,
+          "value": 0.431818,
+          "ci95": [
+            0.296827,
+            0.577759
+          ]
+        },
+        "combined_recall_assuming_perfect_user": {
+          "k": 28,
+          "n": 44,
+          "value": 0.636364,
+          "ci95": [
+            0.488664,
+            0.762165
+          ]
+        },
+        "ask_rate": {
+          "k": 16,
+          "n": 400,
+          "value": 0.04,
+          "ci95": [
+            0.024769,
+            0.063982
+          ]
+        },
+        "unknown_auto": 1
+      },
+      {
+        "arm": "choice",
+        "auto": 0.9,
+        "ask": 0.7,
+        "precision": {
+          "k": 15,
+          "n": 20,
+          "value": 0.75,
+          "ci95": [
+            0.531299,
+            0.888138
+          ]
+        },
+        "recall": {
+          "k": 15,
+          "n": 44,
+          "value": 0.340909,
+          "ci95": [
+            0.218758,
+            0.488609
+          ]
+        },
+        "combined_recall_assuming_perfect_user": {
+          "k": 28,
+          "n": 44,
+          "value": 0.636364,
+          "ci95": [
+            0.488664,
+            0.762165
+          ]
+        },
+        "ask_rate": {
+          "k": 23,
+          "n": 400,
+          "value": 0.0575,
+          "ci95": [
+            0.038618,
+            0.084801
+          ]
+        },
+        "unknown_auto": 1
+      }
+    ],
+    "protocol_sha256": "d8f6fae0d1fd720eee1a78b2e62fe7f5199650f6d36cd859880bc50cfdd58db2",
+    "results_sha256": "a3514ebe356a88415e5e974a2a63bcd779b1b8ef3f0473ff3cb0aeb156690c0b"
+  },
+  "exploratory": {
+    "koreanBest": {
+      "auto": 0.77,
+      "ask": 0.43,
+      "tp": 10,
+      "n": 11,
+      "unknown": 0,
+      "precision": 0.9090909090909091,
+      "autoRecall": 0.22727272727272727,
+      "combinedRecall": 0.8409090909090909,
+      "combinedTP": 37,
+      "askCount": 74
+    },
+    "koreanPrecisionCI": [
+      0.6226415635484137,
+      0.9837678271141146
+    ],
+    "intersectionCI": [
+      0.646120088858892,
+      0.9851349055950824
+    ]
+  }
+}

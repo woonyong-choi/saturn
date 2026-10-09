@@ -104,10 +104,8 @@ async fn packet_overflow_rejection_resends_once_without_the_lowest_items() {
     assert_eq!((again.attempt, again.state), (2, PacketState::Sent));
     assert_eq!(again.reduced_from, Some(first.id));
     assert!(again_kept < first_kept, "{attempts:?}");
-    assert_eq!(
-        (*first_kept, *first_dropped, *again_dropped),
-        (CALLS.len(), 0, 0)
-    );
+    assert_eq!((*first_kept, *first_dropped), (CALLS.len(), 0));
+    assert_eq!(*again_dropped, CALLS.len() - kept_tools(&sent[1]));
     assert_ne!(first.session, again.session);
     assert!(again.provider_session.is_some() && first.provider_session.is_none());
     assert!(again.run.is_some());

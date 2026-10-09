@@ -162,6 +162,7 @@ impl std::fmt::Debug for RouterExchange {
             Err(RouterError::Superseded) => "Superseded",
         };
         f.debug_struct("RouterExchange")
+            .field("unknown_cost_calls", &self.unknown_cost_calls)
             .field("sent_len", &self.sent.len())
             .field("received_len", &self.received.as_ref().map(String::len))
             .field("result", &result)
@@ -839,13 +840,11 @@ mod tests {
             Routers::select(&saturn, Arc::clone(&secrets), Masker::default()),
             Err(RoutersError::NotConfigured { .. })
         ));
-        let collect = load(
-            &mut manager,
-            &store,
-            &home,
-            "[router]\nmode = \"collect\"\n",
-        )
-        .await;
+        // 새 설정에서 거부하는 값도 과거 스냅샷에는 남을 수 있다.
+        let collect: Settings = serde_json::from_value(serde_json::json!({
+            "values": {"router": {"method": "collect"}}
+        }))
+        .unwrap();
         assert!(matches!(
             Routers::select(&collect, Arc::clone(&secrets), Masker::default()),
             Err(RoutersError::NotConfigured {
@@ -856,7 +855,7 @@ mod tests {
             &mut manager,
             &store,
             &home,
-            "[router]\nmethod = \"saturn\"\n[router.local]\nendpoint = \"http://127.0.0.1:9\"\nversion = \"v2\"\n",
+            "[router]\nmethod = \"saturn\"\n[router.local]\nendpoint = \"https://127.0.0.1:9\"\nversion = \"v2\"\n",
         )
         .await;
         let chosen = Routers::select(&local, secrets, Masker::default()).unwrap();

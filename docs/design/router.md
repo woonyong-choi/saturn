@@ -106,6 +106,44 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 - 실행 중이면 처리 방식을 `relation_to_running`과 `steer_or_spawn`으로 정한다. `refines`, `continues`면 `steer_or_spawn`의 `steer`, `queue`, `spawn`을 끼워 넣기, 대기, 새 작업으로 옮기고, `independent`면 새 작업이다. `conflicts`는 `steer_or_spawn` 답과 관계없이 끼워 넣기로 둔다. 모델이 다음 단계에서 입력을 읽고 방향을 바꾸게 하고, 끼워 넣을 수 없을 때의 확인은 [충돌 입력](input-handling.md#충돌-입력)이 정한다. 확신도가 0.6 미만이면 충돌로 보지 않고 대기로 둔다. 실행 중이 아니면 `keep_current`로 현재 에이전트 대기와 새 작업을 가른다.
 - `target_model`의 선택지는 허용 후보와 `other`이고, `other`를 고르면 대체 규칙을 따른다. 후보가 없으면 묻지 않는다. 허용 후보는 provider가 알려 주는 모델 목록으로, `/model`이 보이는 목록과 같다([모델 고르기](providers-and-sessions.md#모델-고르기)). 채팅에 고정한 모델이 있으면 `target_model`만 묻지 않고 그 모델을 쓰며, 관계 판단 질문은 똑같이 묻는다. 모델 선택 방식(`model.mode`)의 기본은 매뉴얼이고, 오토는 실험 옵션이라 사용자가 켜야 `target_model`을 묻는다. 매뉴얼이면 `target_model`만 묻지 않고 기본 모델을 쓴다. `other`나 확신도 0.6 미만, 후보 밖 값, 적용 직전 모델 목록에 없는 선택, router 장애는 사용자 선호(품질을 확정한 후보), 기본 모델 순으로 받는다. 기본 모델이 없으면 현재 모델이다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)). engine은 provider 연결을 만들 때 받아 둔 모델 목록(`/model`이 보이는 목록)을 Claude, Codex 순으로 후보에 넣고, 선택지는 `<provider>/<model>` 글이다. 목록을 아직 못 받은 provider(연결 전이거나 목록 요청이 실패한 경우)는 후보에서 빠지고, 받은 목록이 없으면 묻지 않아 현재 모델(첫 입력은 기본 provider의 기본값)을 쓴다. 후보는 관계 판단과 같은 요청에서 묻지만, 고른 모델은 새 작업으로 판단된 입력에만 적용한다. 이어 가는 입력(대기)과 끼워 넣기는 현재 모델을 유지한다. 적용한 모델은 입력 기록(`inputs.pinned_model`)에 남겨 다시 시작해도 같은 모델로 보낸다. 그 새 작업이 메인이고 모델이 열린 메인 session의 모델과 다르면 새 메인 session 규칙을 따르고, 보조 에이전트면 그 모델로 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기))(초안).
 - `difficulty`와 `skills`는 답을 쓰는 곳이 생기기 전까지 묻지 않고 대체 규칙(미사용, 힌트 생략)으로 둔다. 쓰지 않는 질문으로 판단 비용을 늘리지 않기 위해서다.
+
+### 모델 선택 확장 경계
+
+`target_model`은 현재 새 작업의 첫 모델을 한 번 고른다. 이어 가는 입력과 provider 내부의 도구 호출 뒤 모델 호출에는 적용하지 않는다. [jev-codex-router의 분리 판단](https://github.com/0xNatoshi/jev-codex-router/blob/8701ef788aa8cb0948f299538747fb01029d32b8/server/routing_policy.py)은 필수 상위 모델 정책, 충분한 모델, 추론 깊이, 선택을 유지할 기간을 별도 질문으로 다룬다. Saturn은 다음 경계를 지킨다.
+
+| 단계 | Saturn의 판단 단위 | 적용 지점 | 상태 |
+|---|---|---|---|
+| 현재 | 관계와 새 작업의 `target_model` | 새 작업 session을 열기 전 | 구현 |
+| 다음 | 필수 상위 모델 정책·모델·추론 깊이를 분리해 그림자 판단으로 기록 | 입력을 접수한 뒤 기존 router 요청 | 설계 |
+| 후속 | provider가 허용하는 범위에서 모델과 추론 깊이를 새 session에 적용 | provider 공통 session 설정과 어댑터 | 설계 |
+| 별도 검증 | 도구 호출 뒤의 매 모델 호출 선택 | provider 내부 요청을 가로챌 수 있는 연결 | 미정 |
+
+- 그림자 판단은 기존 실행 모델을 바꾸지 않는다. 판단별 전체 확률 분포, 질문 판, 사용한 후보 목록, 실제 적용 모델, 완료·수정·재시도·사용량을 기록해 결과를 대조한다. 점수의 확신도를 작업 성공 확률로 읽지 않는다.
+- 모델 후보는 provider가 실제로 알려 준 목록만 쓴다. 필수 상위 모델 정책은 보안·권한·마이그레이션·공개 계약처럼 별도 검토가 필요한 작업에 한정하고, 미지원 후보를 만들지 않는다. 실패 시 기존 기본 모델 규칙을 유지한다.
+- 추론 깊이는 모델 이름과 별도로 판단하되, 어댑터가 해당 모델의 깊이를 설정할 수 있을 때만 적용한다. 지원하지 않으면 기록에 `unapplied`를 남긴다. 두 provider의 이름이나 깊이 단계는 공통 규칙에 박아 넣지 않고 어댑터가 알려 준 능력으로 변환한다.
+- 유지 기간은 `one_call`, `tool_chain`, `user_turn` 같은 외부 정책을 그대로 복사하지 않는다. 현재 Saturn의 제어 지점은 입력과 session 경계이므로 처음에는 입력 하나로 고정한다. provider 내부 매 호출의 유지 기간은 해당 호출을 관측하고 바꿀 수 있는지 확인한 뒤에만 도입한다.
+- 캐시 읽기량, 경과 시간, 맥락 크기는 이미 관측한 값만 비용 판단 자료로 쓴다. 모델을 바꾸면 모델별 캐시가 식을 수 있으므로 명목 단가만으로 절감이라고 기록하지 않는다. 실제 결과와 교정 비용을 함께 잰다.
+- router는 작은 판단 맥락만 받고 provider에는 원래 입력과 패킷을 그대로 넘긴다. 모델 선택을 위해 기록 원문을 Jev에 중복 전송하지 않는다. 판단 기록에는 비밀값을 남기지 않는다.
+
+이 확장은 현재 `target_model`의 적중률이 [작업별 모델 선택 실험](../experiments/target-model-choice/report.md)에서 대체 후 50.0%이고 매뉴얼 대비 이득을 보이지 못했다는 제한을 먼저 해결해야 한다. 그림자 판단과 결과 정답지를 검증하기 전에는 세분화된 자동 선택을 기본값으로 켜지 않는다. Codex 내부의 매 호출을 프록시로 바꾸는 방식은 Claude CLI와 같은 계약으로 구현되지 않으므로 별도 연결 능력으로 다룬다.
+
+모델 선택 검증은 같은 작업을 기본 모델과 선택 모델에 대응 실행하고, 작업별 실행 검사·수정 비용·실제 사용량으로 대조한다. 지속 제약 1,000건의 합의 라벨이나 router 확률은 모델 선택의 정답지가 아니다. 품질 허용 차이와 비용·지연 판정 기준을 결과 열람 전에 고정한 실험이 없으면 자동 적용을 켜지 않는다. `required_tier`는 모델 후보를 제한하는 판단이며 권한 승인이나 키 보호 규칙을 완화하지 않는다.
+
+구현은 [그림자 판단 #527](https://github.com/woonyong-choi/saturn/issues/527)과 [선택 적용 #531](https://github.com/woonyong-choi/saturn/issues/531)로 나눈다. 같은 후보 검증과 판단 기록을 재사용하고, 적용 단계는 그림자 결과의 독립 검증 뒤에만 연다.
+
+### Manifest 무료 모델 라우터와의 경계
+
+[영상에서 소개한 가이드](https://lazyowen.com/guides/free-llm-api-claude-code-setup)는 무료 공급자 목록과 Manifest 라우터를 Claude Code에 연결한다. [Manifest의 Claude Code 연결 안내](https://manifest.build/agents/claude-code/)는 Claude Code의 API 주소와 모델을 `auto`로 설정한다. [요청 해석 코드](https://github.com/mnfst/llm-gateway/blob/821f54dcd3984451fc135d866e21db359f18e13c/packages/backend/src/routing/resolve/resolve.service.ts)는 들어온 메시지와 도구 목록으로 요청의 난도를 매기고 모델 경로와 대체 경로를 고른다. [대체 경로 코드](https://github.com/mnfst/llm-gateway/blob/821f54dcd3984451fc135d866e21db359f18e13c/packages/backend/src/routing/proxy/proxy-fallback.service.ts)는 실패한 공급자를 다른 경로로 재시도한다. 2026-10-05 확인했다.
+
+Saturn은 입력을 접수한 뒤 작업 관계와 새 session의 모델을 고르고, provider가 바뀌면 보존 기록으로 패킷을 만든다. Manifest는 Claude Code가 보낸 API 요청 안의 메시지를 다른 모델로 전달한다. 따라서 같은 Claude Code session에서 공급자 장애를 넘기는 범위는 Manifest가 더 넓다. 반면 Manifest의 이 경로는 Saturn의 작업 관계, 보존 기록, 새 provider session 패킷을 대신 만들지 않는다. 두 방식을 함께 쓸 때 Saturn은 선택한 provider와 실제 응답 모델을 구별해 기록해야 한다. 이는 두 코드의 적용 지점에서 내린 추론이며, 결합 동작은 아직 검증하지 않았다.
+
+- 무료 공급자 후보는 모델 이름만으로 채우지 않는다. 도구 호출, 긴 맥락, 응답 형식과 허용된 인증 수단을 만족하는 후보만 보여 준다. 무료 한도와 사용 가능 여부는 호출 시점에 확인하고 실패 이유와 실제 대체 모델을 기록한다. 사용자가 무료 후보만 허용했으면 한도 소진 뒤 유료 모델로 자동 대체하지 않는다.
+- [Manifest의 점수 계산](https://github.com/mnfst/llm-gateway/blob/821f54dcd3984451fc135d866e21db359f18e13c/packages/backend/src/scoring/index.ts)과 [최근 등급 반영](https://github.com/mnfst/llm-gateway/blob/821f54dcd3984451fc135d866e21db359f18e13c/packages/backend/src/scoring/momentum.ts)은 도구 유무와 앞선 모델 등급을 반영해 짧은 후속 요청의 모델이 갑자기 내려가지 않게 한다. Saturn은 이어 가는 입력에서 기존 모델을 유지하므로 같은 목적을 session 경계에서 이미 달성한다. 새 작업의 모델 판단에 최근 등급을 넣을지는 그림자 기록의 오선택률로만 정한다.
+- API 수준 대체는 응답이 시작되기 전의 확정된 실패에만 적용한다. 이미 보냈거나 도구를 실행한 요청의 재전송은 [입력 처리](input-handling.md)의 경계를 따른다. 자동 대체가 provider의 실행 상태까지 옮겼다고 표시하지 않는다.
+- 자동 모델 선택의 주체는 한 곳으로 정한다. Saturn이 구체 모델을 고르면 gateway에는 고정 경로를 요구한다. gateway의 `auto`를 쓰면 Saturn은 그 연결의 내부 모델을 골랐다고 기록하지 않고, gateway가 실제로 보고한 모델과 대체 이유만 관측값으로 남긴다. 실제 모델을 보고하지 않으면 `unknown`이며, 요금 절감이나 모델별 성공으로 집계하지 않는다.
+- gateway가 고른 모델의 맥락 창과 도구·응답 형식 제한도 현재 요청을 만족해야 한다. 큰 맥락 창을 가진 상위 모델의 주소를 대체했다는 이유로 모든 무료 후보가 같은 입력을 받을 수 있다고 가정하지 않는다. 암묵적인 잘라내기는 Saturn의 생략 내역을 깨뜨리므로 허용하지 않는다.
+- Manifest 연결은 별도 gateway 어댑터의 후보로 둔다. router 키 보호, 실제 모델 표시, 원문 기록 정책과 Claude·Codex 양쪽 지원 여부를 검증하기 전에는 기본 경로로 넣지 않는다.
+- [Manifest가 안내하는 요청·응답 본문 기록](https://manifest.build/)을 켜면 provider로 보내는 대화와 도구 결과가 추가 서비스에도 남을 수 있다. Saturn의 `record off`는 Saturn 저장만 제어하므로 gateway 보존 범위와 혼동하지 않게 별도로 알리고 선택하게 한다.
 - 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `route@1.1`은 `is_constraint`를 더한다. `constraint@1.0`은 `constraint_change`와 `line_<k>_is_constraint`로 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다. `constraint_change`는 `constraint.auto_apply`가 켜져 있고 등록 대상이 아닌 입력에서만 별도 요청으로 묻는다.
 - 행동 조건을 채운 선택지가 없으면(확신도 미만, `invalid`, 판단 없음, 허용 후보 없음) 질문마다 위 표의 대체 규칙으로 가고, 입력 처리 판단(`route`, `relation`, `send-opt`)은 사용자에게 따로 묻지 않는다. router 장애와 낮은 확신이 입력을 멈추지 않게 하기 위해서다. 제약 판단(`is_constraint`, `constraint_change`)은 낮은 확신일 때 대체 규칙으로 가지 않고 입력 처리를 멈추지 않는 확인 창으로 사용자에게 묻는다. 단 권한 모드가 `full`이면 묻지 않고 기록 줄로 대신한다([제약](constraints.md#사용자에게-묻기))([#103](https://github.com/woonyong-choi/saturn/issues/103), [#39](https://github.com/woonyong-choi/saturn/issues/39)).
 - 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다.
@@ -146,7 +184,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 
 1. `routers`가 판단 방식이 쓰는 router를 고른다.
 2. 외부 router면 `GET /v1/models`와 실제 판단 1건으로 확인한다.
-3. 로컬 Saturn 모델이면 모델 로드나 API 서버 응답으로 확인한다. 로컬 서버는 루프백 `http` 주소(설정 `router.local.endpoint`)만 받고 기준 router와 같은 본문을 쓴다(초안). 모델 파일 실행은 아직 없고 방식은 [#43](https://github.com/woonyong-choi/saturn/issues/43)에서 정한다.
+3. 로컬 Saturn 모델이면 모델 로드나 API 서버 응답으로 확인한다. 로컬 서버는 인증서를 검증하는 루프백 `https` 주소(설정 `router.local.endpoint`)만 받고 기준 router와 같은 본문을 쓴다(초안). 모델 파일 실행은 아직 없고 방식은 [#43](https://github.com/woonyong-choi/saturn/issues/43)에서 정한다.
 4. 확인에 실패하면 `SATURN_KEY` 환경 변수, 비밀번호 관리자 명령(`router.key.command`) 순서로 키를 받아 다시 확인하고, 그래도 실패하면 화면이 있을 때 TUI가 숨김 입력으로 받아 보낸 키로 다시 확인한다. 화면이 없으면 묻지 않고 키 입력 방법을 안내하고 끝낸다.
 5. 확인에 성공하면 `secrets`가 키를 저장하고 실행을 계속한다.
 
@@ -307,7 +345,11 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 - router 벤더의 형식과 이름을 그대로 쓰는 방식은 router를 바꿀 때 스키마와 코드를 고쳐야 해 버렸다([판단 규격은 Saturn이 정하고 router는 중립 이름과 출처로 기록한다](../decisions/2026-09-29-vendor-neutral-router-spec.md)).
 - Saturn 모델을 API 서버로 두고 서버가 판단 기록을 모으는 방식은 호출마다 상태가 서버로 가서 버렸다([판단 기록은 로컬에 쌓고 동의한 레코드만 서버로 올린다](../decisions/2026-09-29-local-first-judgment-collection.md)).
 
+실행 설정의 `collect`는 구현된 router가 없어 받지 않는다. 이전 설정 스냅샷의 값은 보존하며 다른 방식으로 자동 전환하지 않는다. 로컬 서버 연결도 HTTPS 루프백만 허용하고 TLS 검증을 유지한다.
+
 ## 미해결 질문
+
+- 단계 선호와 코드 필터를 기준선으로 두고 Jev를 선택적으로 호출할 때 후속 품질과 총비용이 개선되는지 ([역할별 효율 예비 실험](../experiments/jev-role-efficiency/report.md), [다섯 확장 도구 비교](../experiments/jev-role-efficiency/stack-comparison.md), [#534](https://github.com/woonyong-choi/saturn/issues/534))
 
 - 독립 프로젝트 표본과 사람 확인 정답으로 `is_constraint` 0.8, `constraint_ask` 0.7을 다시 확인할 수 있는지 ([등록 기준값의 사람 확인](../experiments/constraint-human-check/report.md))
 - 질문을 상위 범주에서 하위 판단으로 내려가는 계층 트리로 나눌지, 단계마다 호출할지, 지금처럼 한 번에 고를지 ([#68](https://github.com/woonyong-choi/saturn/issues/68))

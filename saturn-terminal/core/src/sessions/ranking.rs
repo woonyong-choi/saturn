@@ -24,6 +24,101 @@ pub struct Candidate {
     pub files: Vec<String>,
 }
 
+/// 여러 원문 조각을 대조할 동안 같은 질문의 정규화 결과를 재사용한다.
+pub struct QueryTerms {
+    terms: HashSet<String>,
+}
+
+impl QueryTerms {
+    pub fn new(query: &str) -> Self {
+        Self {
+            terms: fragments(query).into_iter().collect(),
+        }
+    }
+}
+
+/// 같은 원문에 여러 질문을 대조할 때 단어 빈도와 문서 빈도를 다시 계산하지 않는다.
+pub struct RelevanceIndex<'a> {
+    candidates: &'a [Candidate],
+    postings: HashMap<String, Vec<(usize, usize)>>,
+    normalizers: Vec<f64>,
+}
+
+impl<'a> RelevanceIndex<'a> {
+    // cost: time O(L), heap O(L), stack O(1)
+    // vars: L = 후보 글자 수 합
+    // basis: estimate
+    pub fn new(candidates: &'a [Candidate]) -> Self {
+        let mut postings: HashMap<String, Vec<(usize, usize)>> = HashMap::new();
+        let mut lengths = Vec::with_capacity(candidates.len());
+        for (index, candidate) in candidates.iter().enumerate() {
+            let terms = term_counts(&candidate.text);
+            lengths.push(terms.values().sum::<usize>());
+            for (term, frequency) in terms {
+                postings.entry(term).or_default().push((index, frequency));
+            }
+        }
+        let total_length: usize = lengths.iter().sum();
+        let average = (total_length as f64 / candidates.len().max(1) as f64).max(1.0);
+        let normalizers = lengths
+            .into_iter()
+            .map(|length| BM25_K1 * (1.0 - BM25_B + BM25_B * length as f64 / average))
+            .collect();
+        Self {
+            candidates,
+            postings,
+            normalizers,
+        }
+    }
+
+    // cost: time O(q + p + c log c), heap O(q + c), stack O(1)
+    // vars: q = 질문의 글자 수, p = 해당 단어가 있는 후보 항목 수 합, c = 후보 수
+    // basis: estimate
+    pub fn ranked(&self, query: &str) -> Vec<(LedgerSeq, f64)> {
+        self.ranked_query(&QueryTerms::new(query))
+    }
+
+    pub fn ranked_query(&self, query: &QueryTerms) -> Vec<(LedgerSeq, f64)> {
+        let scores = self.scores(query);
+        let mut ranked: Vec<_> = self
+            .candidates
+            .iter()
+            .zip(scores)
+            .filter(|(_, score)| *score > 0.0)
+            .collect();
+        ranked.sort_by(|(left, a), (right, b)| b.total_cmp(a).then(left.seq.cmp(&right.seq)));
+        ranked
+            .into_iter()
+            .map(|(candidate, score)| (candidate.seq, score))
+            .collect()
+    }
+
+    fn scores(&self, query: &QueryTerms) -> Vec<f64> {
+        let count = self.candidates.len() as f64;
+        let idf: HashMap<&String, f64> = query
+            .terms
+            .iter()
+            .map(|term| {
+                let containing = self.postings.get(term).map_or(0, Vec::len) as f64;
+                let weight = ((count - containing + 0.5) / (containing + 0.5) + 1.0).ln();
+                (term, weight)
+            })
+            .collect();
+        let mut scores = vec![0.0; self.candidates.len()];
+        for (term, weight) in idf {
+            let Some(postings) = self.postings.get(term) else {
+                continue;
+            };
+            for &(index, frequency) in postings {
+                let frequency = frequency as f64;
+                scores[index] +=
+                    weight * frequency * (BM25_K1 + 1.0) / (frequency + self.normalizers[index]);
+            }
+        }
+        scores
+    }
+}
+
 // cost: time O(L + c log c), heap O(L + c), stack O(1)
 // vars: L = 후보 글과 마지막 입력의 글자 수 합, c = 후보 수
 // basis: estimate
@@ -134,39 +229,7 @@ fn normalize_path(path: &str) -> String {
 // basis: estimate
 /// 질의 조각은 중복 없이 한 번씩 센다.
 fn bm25_scores(candidates: &[Candidate], last_input: &str) -> Vec<f64> {
-    let query: HashSet<String> = fragments(last_input).into_iter().collect();
-    let documents: Vec<HashMap<String, usize>> = candidates
-        .iter()
-        .map(|candidate| term_counts(&candidate.text))
-        .collect();
-    let lengths: Vec<usize> = documents.iter().map(|terms| terms.values().sum()).collect();
-    let total_length: usize = lengths.iter().sum();
-    let average_length = (total_length as f64 / documents.len().max(1) as f64).max(1.0);
-    let count = documents.len() as f64;
-    let idf: HashMap<&String, f64> = query
-        .iter()
-        .map(|term| {
-            let containing = documents
-                .iter()
-                .filter(|terms| terms.contains_key(term))
-                .count() as f64;
-            let weight = ((count - containing + 0.5) / (containing + 0.5) + 1.0).ln();
-            (term, weight)
-        })
-        .collect();
-    documents
-        .iter()
-        .zip(&lengths)
-        .map(|(terms, &length)| {
-            let norm = BM25_K1 * (1.0 - BM25_B + BM25_B * length as f64 / average_length);
-            idf.iter()
-                .filter_map(|(term, weight)| {
-                    let frequency = *terms.get(*term)? as f64;
-                    Some(weight * frequency * (BM25_K1 + 1.0) / (frequency + norm))
-                })
-                .sum()
-        })
-        .collect()
+    RelevanceIndex::new(candidates).scores(&QueryTerms::new(last_input))
 }
 
 // cost: time O(l), heap O(l), stack O(1)
@@ -220,6 +283,24 @@ mod tests {
     // basis: estimate
     fn seqs(values: &[u64]) -> Vec<LedgerSeq> {
         values.iter().map(|&value| LedgerSeq(value)).collect()
+    }
+
+    #[test]
+    fn recall_excludes_unrelated_records_and_breaks_ties_by_source_order() {
+        let candidates = vec![
+            candidate(3, "greet", &[]),
+            candidate(1, "greet", &[]),
+            candidate(2, "cache", &[]),
+        ];
+        let index = RelevanceIndex::new(&candidates);
+        let ranked: Vec<_> = index
+            .ranked("greet")
+            .into_iter()
+            .map(|(seq, _)| seq)
+            .collect();
+        assert_eq!(ranked, seqs(&[1, 3]));
+        assert!(index.ranked("deployment").is_empty());
+        assert!(index.ranked("").is_empty());
     }
 
     #[test]

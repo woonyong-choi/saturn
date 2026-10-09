@@ -1,0 +1,92 @@
+{
+  "samples": 4000,
+  "attempts": 4000,
+  "completed": 4000,
+  "valid": 3982,
+  "failed": 18,
+  "incomplete": 0,
+  "status_counts": {
+    "ok": 3982,
+    "schema_error": 18
+  },
+  "error_types": {
+    "ValueError": 18
+  },
+  "labels_available": 0,
+  "input_tokens": 29540290,
+  "estimated_usd": 1.2406921800000001,
+  "usage_missing": 0,
+  "p50_s": 0.2993742085000122,
+  "p95_s": 0.43886991599998737,
+  "p95_ci99375": [
+    0.4294775829999935,
+    0.45182987499998717
+  ],
+  "failure_ci99375": [
+    0.00238924442774401,
+    0.008459670020710915
+  ],
+  "arms": [
+    {
+      "arm": "baseline",
+      "auto_threshold": 0.9,
+      "ask_threshold": 0.7,
+      "auto_count": 29,
+      "ask_count": 556,
+      "precision": null,
+      "recall": null,
+      "reason": "independent labels unavailable"
+    },
+    {
+      "arm": "korean",
+      "auto_threshold": 0.77,
+      "ask_threshold": 0.43,
+      "auto_count": 57,
+      "ask_count": 297,
+      "precision": null,
+      "recall": null,
+      "reason": "independent labels unavailable"
+    },
+    {
+      "arm": "choice",
+      "auto_threshold": 0.9,
+      "ask_threshold": 0.7,
+      "auto_count": 63,
+      "ask_count": 98,
+      "precision": null,
+      "recall": null,
+      "reason": "independent labels unavailable"
+    }
+  ],
+  "hypotheses": {
+    "H1": "미평가: 독립 정답 없음",
+    "H2": "미평가: 독립 정답 없음",
+    "H3": "부분 측정: 확인 비율만 가능",
+    "H4": "채택"
+  },
+  "census": {
+    "ts_utc": "2026-10-05T04:26:59.974389+00:00",
+    "seed": 38220261005,
+    "source_files": 4242,
+    "eligible": 10216,
+    "selected": 4000,
+    "target": 4000,
+    "shortfall": 0,
+    "counts": {
+      "user_inputs": 10704,
+      "prior_sessions": 28,
+      "duplicate_or_prior_state": 214,
+      "injected_user_messages": 987,
+      "oversize_state": 274,
+      "experiment_sessions": 1875,
+      "automatic_codex_sessions": 1184
+    },
+    "selected_sessions": 511,
+    "by_provider": {
+      "codex": 3723,
+      "claude": 277
+    },
+    "labels_available": 0
+  },
+  "raw_digest": "455f4a446904919d479e2b771304482c2203ad4dd3bbfe5a5a915eef0377ec80"
+}

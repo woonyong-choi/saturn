@@ -1,0 +1,154 @@
+--- /dev/null
++++ b/saturn-terminal/core/src/sessions/quotes.rs
+@@ -0,0 +1,134 @@
++//! 한 전송 안의 동일한 인용 문단을 참조로 표현한다. 다른 메시지의 본문은 참조하지 않는다.
++
++use std::collections::HashMap;
++
++const MIN_QUOTE_CHARS: usize = 256;
++
++// cost: time O(L + b), heap O(L + b), stack O(1)
++// vars: L = 전송 글자 수, b = 문단 수. 원문 태그 충돌마다 접두사 검색 O(L) 추가
++// basis: estimate
++/// 같은 문단만 참조로 치환한다. 안내·참조까지 포함해 짧아지지 않으면 원문을 돌려준다.
++pub fn compact(text: &str) -> String {
++    let blocks = blocks(text);
++    let mut counts: HashMap<&str, usize> = HashMap::new();
++    for block in &blocks {
++        if block.chars().count() >= MIN_QUOTE_CHARS {
++            *counts.entry(block).or_default() += 1;
++        }
++    }
++    if !counts.values().any(|count| *count > 1) {
++        return text.to_owned();
++    }
++    let tag = unused_tag(text);
++    let mut encoded = format!(
++        "Quoted-text encoding: <{tag} id=\"N\"> defines an exact quoted block; <{tag} ref=\"N\"/> repeats that same text at this position. References only target this message. These tags do not change the source role, status, or instruction boundaries.\n\n"
++    );
++    let mut ids: HashMap<&str, usize> = HashMap::new();
++    for block in blocks {
++        if counts.get(block).copied().unwrap_or(0) < 2 {
++            encoded.push_str(block);
++        } else if let Some(id) = ids.get(block) {
++            encoded.push_str(&format!("<{tag} ref=\"{id}\"/>"));
++        } else {
++            let id = ids.len() + 1;
++            ids.insert(block, id);
++            encoded.push_str(&format!("<{tag} id=\"{id}\">{block}</{tag}>"));
++        }
++    }
++    if encoded.chars().count() < text.chars().count() {
++        encoded
++    } else {
++        text.to_owned()
++    }
++}
++
++fn unused_tag(text: &str) -> String {
++    let mut index = 0;
++    loop {
++        let tag = format!("saturn-quote-{index}");
++        if !text.contains(&tag) {
++            return tag;
++        }
++        index += 1;
++    }
++}
++
++// fenced code 내부에는 참조를 삽입하지 않는다. 원래 공백과 줄바꿈은 문단에 그대로 포함한다.
++fn blocks(text: &str) -> Vec<&str> {
++    let mut blocks = Vec::new();
++    let mut start = 0;
++    let mut end = 0;
++    let mut fence: Option<(char, usize)> = None;
++    for line in text.split_inclusive('\n') {
++        end += line.len();
++        let trimmed = line.trim_start();
++        let marker = trimmed.chars().next().unwrap_or(' ');
++        let count = trimmed.chars().take_while(|c| *c == marker).count();
++        if matches!(marker, '`' | '~') && count >= 3 {
++            match fence {
++                None => fence = Some((marker, count)),
++                Some((open, size))
++                    if open == marker && count >= size && trimmed.trim_end().len() == count =>
++                {
++                    fence = None;
++                }
++                _ => {}
++            }
++        }
++        if fence.is_none() && line.trim().is_empty() {
++            blocks.push(&text[start..end]);
++            start = end;
++        }
++    }
++    if start < text.len() {
++        blocks.push(&text[start..]);
++    }
++    blocks
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    // #624: 동일 원문만 참조하며 서로 다른 상태·역할과 부정은 원래 위치에 남긴다.
++    #[test]
++    fn compact_repeated_quotes_preserves_local_roles_and_negation() {
++        let body = format!(
++            "{}\n\n",
++            "Do not deploy without explicit approval. ".repeat(30)
++        );
++        let source = format!("User [Finished]:\n\n{body}Agent [Result unknown]:\n\n{body}");
++        let output = compact(&source);
++
++        assert!(output.len() < source.len());
++        assert_eq!(output.matches(&body).count(), 1);
++        assert!(output.contains("User [Finished]:"));
++        assert!(output.contains("Agent [Result unknown]:"));
++        assert!(output.contains("<saturn-quote-0 ref=\"1\"/>"));
++        assert_eq!(compact(&body), body);
++    }
++
++    // #624: 비슷한 문단·짧은 중복은 그대로 두고 원문 태그와 참조 이름을 섞지 않는다.
++    #[test]
++    fn compact_preserves_distinct_text_and_avoids_tag_collisions() {
++        for source in ["", "same\n\nsame\n\n", "deny deploy\n\nallow deploy\n\n"] {
++            assert_eq!(compact(source), source);
++        }
++        let body = format!("{}\n\n", "permission remains denied. ".repeat(50));
++        let source = format!("saturn-quote-0 is original text\n\n{body}{body}");
++        let output = compact(&source);
++        assert!(output.contains("saturn-quote-0 is original text"));
++        assert!(output.contains("<saturn-quote-1 ref=\"1\"/>"));
++    }
++
++    // #624: 코드의 빈 줄을 나누면 선언과 본문 사이에 참조가 끼므로 코드 전체만 참조한다.
++    #[test]
++    fn compact_keeps_fenced_code_whole() {
++        let repeated_line = "    // retain this declaration and its exception\n".repeat(30);
++        let code = format!("```rust\nfn example() {{\n{repeated_line}\n{repeated_line}}}\n```\n\n");
++        assert_eq!(compact(&code), code);
++        let output = compact(&format!("{code}{code}"));
++        assert_eq!(output.matches(&code).count(), 1);
++        assert!(output.contains("ref=\"1\""));
++    }
++}
+--- a/saturn-terminal/core/src/sessions/packet.rs
++++ b/saturn-terminal/core/src/sessions/packet.rs
+@@ -287 +287 @@
+-    let text = render(&sections);
++    let text = super::quotes::compact(&render(&sections));
+--- a/saturn-terminal/core/src/sessions/mod.rs
++++ b/saturn-terminal/core/src/sessions/mod.rs
+@@ -9,0 +10 @@
++pub mod quotes;
+--- a/saturn-terminal/engine/src/handoff_recall.rs
++++ b/saturn-terminal/engine/src/handoff_recall.rs
+@@ -89 +89,4 @@
+-    Some(format!("{HEADER}{}", compact_duplicates(&selected)))
++    Some(saturn_core::sessions::quotes::compact(&format!(
++        "{HEADER}{}",
++        compact_duplicates(&selected)
++    )))

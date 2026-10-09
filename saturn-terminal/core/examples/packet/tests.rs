@@ -212,7 +212,7 @@ fn scenario_file(dir: &TempDir) -> String {
 }
 
 fn run_scenario(scenarios: &str, extra: &[&str]) -> Value {
-    run_scenario_with_budget(scenarios, "250", extra)
+    run_scenario_with_budget(scenarios, "350", extra)
 }
 
 fn run_scenario_with_budget(scenarios: &str, budget: &str, extra: &[&str]) -> Value {
@@ -277,6 +277,19 @@ fn packet_without_judgments_fills_in_rrf_order() {
     let included = seqs(&result["included"]);
     assert!(included.contains(&rrf[0]));
     assert_eq!(result["routed"], 0);
+}
+
+#[test]
+fn archive_boundary_is_kept_when_fixed_text_uses_the_small_budget() {
+    let dir = TempDir::new().unwrap();
+    let result = run_scenario_with_budget(&scenario_file(&dir), "250", &[]);
+    assert!(seqs(&result["included"]).is_empty());
+    assert!(
+        result["packet"]
+            .as_str()
+            .unwrap()
+            .ends_with(saturn_core::sessions::packet::ARCHIVE_END)
+    );
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -436,7 +449,7 @@ fn packet_scenario_session_and_time_appear_before_items() {
             + "\n"),
     );
 
-    let result = run_scenario(&scenarios, &[]);
+    let result = run_scenario_with_budget(&scenarios, "350", &[]);
 
     let packet = result["packet"].as_str().unwrap();
     assert!(packet.contains("### Session 1\n\n#2 2026-09-12T10:05Z read"));

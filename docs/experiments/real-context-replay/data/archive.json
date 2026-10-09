@@ -1,0 +1,9 @@
+{
+  "path": ".local/archives/real-context-replay-20261007T152016Z.tar.gz",
+  "sha256": "c4da205d33883a18fa52e07c9e23757a8222bb96fb9d01264fe371a7c0bec4b5",
+  "bytes": 5007818,
+  "payload_files": 1374,
+  "manifest_sha256": "ed84d4f015afd4c3bba84ddd7d6ee991c86162e59baa02183ccc9e76197836c9",
+  "verified_all_payload_bytes": true,
+  "receipt_outside_bundle": true
+}

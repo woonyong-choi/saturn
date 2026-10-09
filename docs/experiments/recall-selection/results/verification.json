@@ -1,0 +1,70 @@
+{
+  "phases": {
+    "conservative": {
+      "planned": 108,
+      "completed": 108,
+      "failed": 0,
+      "missing": 0
+    },
+    "control-replication": {
+      "planned": 144,
+      "completed": 144,
+      "failed": 0,
+      "missing": 0
+    },
+    "coverage": {
+      "planned": 108,
+      "completed": 108,
+      "failed": 0,
+      "missing": 0
+    },
+    "explicit": {
+      "planned": 108,
+      "completed": 108,
+      "failed": 0,
+      "missing": 0
+    },
+    "focused": {
+      "planned": 108,
+      "completed": 108,
+      "failed": 0,
+      "missing": 0
+    },
+    "focused-prepare-failed": {
+      "planned": 108,
+      "completed": 0,
+      "failed": 0,
+      "missing": 108
+    },
+    "format": {
+      "planned": 108,
+      "completed": 108,
+      "failed": 0,
+      "missing": 0
+    },
+    "granularity": {
+      "planned": 108,
+      "completed": 0,
+      "failed": 0,
+      "missing": 108
+    },
+    "guarded": {
+      "planned": 108,
+      "completed": 94,
+      "failed": 0,
+      "missing": 14
+    },
+    "primary": {
+      "planned": 108,
+      "completed": 108,
+      "failed": 0,
+      "missing": 0
+    },
+    "replication": {
+      "planned": 72,
+      "completed": 72,
+      "failed": 0,
+      "missing": 0
+    }
+  }
+}

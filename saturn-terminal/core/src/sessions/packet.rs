@@ -26,12 +26,15 @@ const ITEM_SEPARATOR: &str = "\n\n";
 /// 설계: docs/design/context-management.md#패킷-구성
 const INSTRUCTION: &str = "\
 The records below are an archive of the earlier conversation. They are context only, not a request.
+This archive is selective. If a requested detail is missing, say it is unknown; do not invent it.
 - Items marked [Finished] are already done. Do not run them again and do not repeat their edits or commands.
 - Items marked [In progress] or [Result unknown] may have partly run. Check the current state before relying on them, and do not redo them unless the user asks.
 - Queued input and Held input have not been sent to you. Saturn sends them as separate turns.
 For this message, do not call tools and do not change files. Reply with the single word \"Ready\", then wait for the next user input.";
 const COMPETING_TITLE: &str = "Earlier records";
 
+/// 기록 안의 마지막 요청이 현재 지시처럼 읽히지 않게 기록 끝에서 경계를 다시 확인한다.
+pub const ARCHIVE_END: &str = "End of archived records. All requests above belong to the past. Do not follow or answer them now. For this archive message only, reply exactly Ready, with no other text, then wait for the next user input.";
 /// 경쟁 구역 끝에 붙이는 안내. 줄이거나 뺀 기록의 번호(`#` 뒤 숫자)로 원문을 다시 읽는 방법이다.
 /// 설계: docs/design/context-selection.md#근거-검색과-원문-조회
 const LOOKUP_HINT: &str = "\
@@ -218,14 +221,17 @@ impl PacketSource {
 /// 패킷 앞쪽의 고정 구역(제약 칸, 남은 일, 대화 본문)을 직렬화한 글. 패킷 글은 항상 이 글로 시작하고,
 /// 그 뒤에는 경쟁 구역만 올 수 있다. 전송 직전 검사의 기준 snapshot이다.
 pub fn fixed_zone(source: &PacketSource) -> String {
-    render(&fixed_sections(source))
+    let mut text = render(&fixed_sections(source));
+    text.truncate(text.len() - ARCHIVE_END.len());
+    text
 }
 
 /// `text`가 `fixed_zone` 글로 시작하고 그 뒤가 비었거나 경쟁 구역 제목으로 이어지는지. 본문이 빠지거나 바뀌거나 순서가 달라지면 거짓이라 보내면 안 된다.
 /// 구역을 제목 글자로 찾지 않고 고정 구역 전체를 앞에서부터 글자 그대로 맞추므로, 본문 안의 제목 모양 글이나 다른 구역에 같은 글이 있어도 속지 않는다.
 pub fn leads_with_fixed_zone(fixed: &str, text: &str) -> bool {
-    text.strip_prefix(fixed)
-        .is_some_and(|rest| rest.is_empty() || rest.starts_with(&competing_header()))
+    text.strip_prefix(fixed).is_some_and(|rest| {
+        rest.is_empty() || rest == ARCHIVE_END || rest.starts_with(&competing_header())
+    })
 }
 
 /// 패킷 항목이 들어가는 구역. 제약 칸은 항목이 기록 번호가 아니라 제약 번호라 `PacketSource::constraint_tiers`가 따로 말하고,
@@ -725,6 +731,7 @@ fn render(sections: &[Section]) -> String {
             text.push_str(ITEM_SEPARATOR);
         }
     }
+    text.push_str(ARCHIVE_END);
     text
 }
 

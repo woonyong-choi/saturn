@@ -1,0 +1,93 @@
+{
+  "ts_utc": "2026-10-05T10:49:05.576570+00:00",
+  "selected": 1000,
+  "population": 4000,
+  "strata": {
+    "automatic": {
+      "sample": 57,
+      "positive": 30,
+      "negative": 23,
+      "uncertain": 4
+    },
+    "ask": {
+      "sample": 301,
+      "positive": 84,
+      "negative": 209,
+      "uncertain": 8
+    },
+    "low": {
+      "sample": 642,
+      "positive": 38,
+      "negative": 599,
+      "uncertain": 5
+    }
+  },
+  "gold_labels": {
+    "not_constraint": 831,
+    "constraint": 152,
+    "uncertain": 17
+  },
+  "providers": {
+    "codex": 897,
+    "claude": 103
+  },
+  "direct_agreement": 947,
+  "third_requested": 53,
+  "third_valid": 53,
+  "consensus": 983,
+  "future_truncated": 672,
+  "metrics": {
+    "automatic_precision_known": 0.5660377358490566,
+    "automatic_precision_bounds": [
+      0.5263157894736842,
+      0.5964912280701754
+    ],
+    "automatic_precision_wilson95": [
+      0.4326535142760729,
+      0.690496034402497
+    ],
+    "automatic_recall_estimate": 0.09056271147885922,
+    "automatic_recall_wilson95": [
+      0.07346658579467923,
+      0.10972840640017364
+    ],
+    "automatic_recall_project_bootstrap95": [
+      0.043690122673328766,
+      0.19435770431786367
+    ],
+    "candidate_recall_estimate": 0.344138303619665,
+    "candidate_recall_wilson95": [
+      0.2791730260197811,
+      0.41696794432065987
+    ],
+    "candidate_recall_project_bootstrap95": [
+      0.16602246615864932,
+      0.738559276407882
+    ],
+    "automatic_recall_label_bounds": [
+      0.08198186693908824,
+      0.10192760282416227
+    ],
+    "candidate_recall_label_bounds": [
+      0.31849395545575604,
+      0.3688847542957207
+    ],
+    "ask_rate_population": 0.07525,
+    "low_positive_rate_known": 0.059654631083202514,
+    "low_positive_rate_wilson95": [
+      0.04376779571192718,
+      0.08082067733665188
+    ],
+    "low_positive_rate_project_bootstrap95": [
+      0.0110803324099723,
+      0.15723614974065994
+    ],
+    "population_positive_estimate": 331.26216640502355
+  },
+  "goldset_sha256": "e7593afe732c8737e2dd3fa066f58b2aefb75a6ec8daffb0a6d046f1be0cdd87",
+  "method_sha256": "d486a8d2ffb0ff457a4d4dc12ecfb25e37251cb4087f9b80304031125b6e03e9",
+  "label_source": "Astra consensus proxy; not human verified",
+  "manifest_sha256": "2db72db0ed4bb941973f3ef567f2ab21799a37213a7c430c506824bc616b0960",
+  "goldset_file_sha256": "f3466f43afdff8bdfe5892f8c7eb72c4278819c54e629c80e998fee7bc7bdc6f",
+  "goldset_sha256_scope": "canonical JSON: ensure_ascii=False, sort_keys=True, no indentation"
+}

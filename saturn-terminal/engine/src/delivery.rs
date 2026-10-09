@@ -558,6 +558,13 @@ impl Engine {
     ) -> Result<(), EngineError> {
         let chat = job.record.chat;
         job.delivery.live = Some(live.clone());
+        let text = match self.input_with_recalled_context(&job.record, &live).await {
+            Ok(text) => text,
+            Err(error) => {
+                let reason = self.failure_line(&error);
+                return self.reject(job.delivery, reason).await;
+            }
+        };
         if let Err(reason) = self.begin_task(&mut job.delivery, &live) {
             return self.reject(job.delivery, reason).await;
         }
@@ -577,11 +584,7 @@ impl Engine {
         }
         match self.provider_mut(chat, live.provider) {
             Ok(connection) => {
-                connection.send_turn_detached(
-                    live.provider_session,
-                    job.record.text.clone(),
-                    MAX_SEND_ATTEMPTS,
-                );
+                connection.send_turn_detached(live.provider_session, text, MAX_SEND_ATTEMPTS);
                 self.park(job, Stage::Sending);
                 Ok(())
             }

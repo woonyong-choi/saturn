@@ -1,0 +1,151 @@
+--- a/saturn-terminal/engine/src/handoff_recall.rs
++++ b/saturn-terminal/engine/src/handoff_recall.rs
+@@ -69,0 +70,28 @@
++    let allowance = max_chars.checked_sub(HEADER.chars().count())?;
++    let mut selected = fit_candidates(
++        &candidates,
++        adaptive_candidates(&candidates[..primary_count], query),
++        allowance / 2,
++    );
++    let used: usize = selected
++        .iter()
++        .map(|candidate| candidate.text.chars().count() + 2)
++        .sum();
++    selected.extend(fit_candidates(
++        &candidates,
++        adaptive_candidates(&candidates[primary_count..], query),
++        allowance.saturating_sub(used),
++    ));
++    if selected.is_empty() {
++        return None;
++    }
++    selected.sort_by_key(|candidate| candidate.seq);
++    Some(format!("{HEADER}{}", compact_duplicates(&selected)))
++}
++
++// 사용자·도구 기록을 먼저 고른 뒤 쓰지 않은 몫은 답의 근거에 쓸 수 있다.
++fn fit_candidates(
++    candidates: &[Candidate],
++    ranked: Vec<LedgerSeq>,
++    mut remaining: usize,
++) -> Vec<&Candidate> {
+@@ -71,5 +98,0 @@
+-    let allowance = max_chars.checked_sub(HEADER.chars().count())? / 2;
+-    let mut remaining = [allowance; 2];
+-    let ranked = adaptive_candidates(&candidates[..primary_count], query)
+-        .into_iter()
+-        .chain(adaptive_candidates(&candidates[primary_count..], query));
+@@ -78 +100,0 @@
+-        let pool = usize::from(id.0 as usize >= primary_count);
+@@ -80,2 +102,2 @@
+-        if size <= remaining[pool] {
+-            remaining[pool] -= size;
++        if size <= remaining {
++            remaining -= size;
+@@ -85,5 +107 @@
+-    if selected.is_empty() {
+-        return None;
+-    }
+-    selected.sort_by_key(|candidate| candidate.seq);
+-    Some(format!("{HEADER}{}", compact_duplicates(&selected)))
++    selected
+@@ -102,2 +120 @@
+-                index
+-                    .ranked(question)
++                ranked_for_question(&index, candidates, question)
+@@ -119,2 +136,5 @@
+-        let ranked = index.ranked(query);
+-        let minimum = ranked.first().map_or(0.0, |(_, score)| score * 0.25);
++        let ranked = ranked_for_question(&index, candidates, query);
++        let minimum = ranked
++            .iter()
++            .map(|(_, score)| score * 0.25)
++            .fold(0.0, f64::max);
+@@ -131,0 +152,41 @@
++}
++
++fn ranked_for_question(
++    index: &RelevanceIndex<'_>,
++    candidates: &[Candidate],
++    question: &str,
++) -> Vec<(LedgerSeq, f64)> {
++    let identifiers: Vec<_> = question
++        .split(|c: char| !is_identifier_char(c))
++        .map(|word| word.trim_matches('.'))
++        .filter(|word| word.contains('_') || word.contains('.'))
++        .collect();
++    let mut ranked = index.ranked(question);
++    if identifiers.is_empty() {
++        return ranked;
++    }
++    let exact: std::collections::HashMap<_, _> = candidates
++        .iter()
++        .map(|candidate| {
++            let count = identifiers
++                .iter()
++                .filter(|identifier| contains_identifier(&candidate.text, identifier))
++                .count();
++            (candidate.seq, count)
++        })
++        .collect();
++    // 긴 테스트 이름의 부분 일치보다 질문에 적힌 식별자 자체를 우선한다.
++    ranked.sort_by_key(|(seq, _)| std::cmp::Reverse(exact.get(seq).copied().unwrap_or(0)));
++    ranked
++}
++
++fn is_identifier_char(c: char) -> bool {
++    c.is_alphanumeric() || matches!(c, '_' | '.')
++}
++
++fn contains_identifier(text: &str, identifier: &str) -> bool {
++    text.match_indices(identifier).any(|(start, _)| {
++        let before = text[..start].chars().next_back();
++        let after = text[start + identifier.len()..].chars().next();
++        !before.is_some_and(is_identifier_char) && !after.is_some_and(is_identifier_char)
++    })
+@@ -272 +333,5 @@
+-            units.extend(blocks[index].split_inclusive('\n').map(str::to_owned));
++            if starts_numbered_list(blocks[index]) {
++                units.push(blocks[index].to_owned());
++            } else {
++                units.extend(blocks[index].split_inclusive('\n').map(str::to_owned));
++            }
+@@ -282,0 +348,8 @@
++}
++
++// 번호 목록의 뒤 항목에도 조건과 예외가 있어 절차 전체를 한 후보로 둔다.
++fn starts_numbered_list(block: &str) -> bool {
++    let Some((number, rest)) = block.trim_start().split_once(['.', ')']) else {
++        return false;
++    };
++    !number.is_empty() && number.chars().all(|c| c.is_ascii_digit()) && rest.starts_with(' ')
+@@ -356 +429,4 @@
+-        let rows = [record("engine-lifecycle.md 문서 내용을 기록해 줘.", document)];
++        let rows = [record(
++            "engine-lifecycle.md 문서 내용을 기록해 줘.",
++            document,
++        )];
+@@ -359 +435,22 @@
+-        assert!(evidence.contains("14일"), "backup retention is missing: {evidence}");
++        assert!(evidence.chars().count() <= 8000);
++        assert!(
++            evidence.contains("14일"),
++            "backup retention is missing: {evidence}"
++        );
++    }
++
++    #[test]
++    fn recall_keeps_the_exact_schema_definition_not_only_test_names() {
++        let document = include_str!("../../../docs/design/records.md");
++        let rows = [record("records.md 문서 내용을 기록해 줘.", document)];
++        let query = "extensions 표를 추가한 스키마 버전 번호는?\ndirect_installs 표를 추가한 스키마 버전 번호는?\nsessions.last_active 열을 추가한 스키마 버전 번호는?\nrun_changes 표를 추가한 스키마 버전 번호는?";
++        let evidence = recall_evidence(&rows, &[], query, 8000).unwrap();
++        assert!(evidence.chars().count() <= 8000);
++        let definition = document
++            .lines()
++            .find(|line| line.starts_with("- `run_changes` 표는"))
++            .unwrap();
++        assert!(
++            evidence.contains(definition),
++            "direct schema definition is missing: {evidence}"
++        );

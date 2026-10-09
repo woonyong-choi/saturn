@@ -276,7 +276,6 @@ impl ChatState {
     // cost: time O(log i + h), heap O(n), stack O(1)
     // vars: i = 입력 수, h = 보류 줄 수, n = 원문 길이
     // basis: estimate
-    /// TODO(#60): provider가 끼워 넣기를 거절한 입력(`Rejected`)을 대기로 옮길지, 다시 판단할지, 물을지
     pub(crate) fn apply_input(&mut self, update: InputUpdate, now: Instant) -> Change {
         let seq = self.next_seq();
         self.judging_tails.retain(|tail| tail.until > now);

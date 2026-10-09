@@ -31,6 +31,13 @@ use crate::switch::Reduction;
 /// 제약 기준 파일과 도구 후보 순위가 보는 최근 턴 수. 대화 본문을 싣는 범위가 아니다.
 const REFERENCE_TURNS: usize = 3;
 
+#[cfg(test)]
+#[path = "handoff_replay.rs"]
+mod replay;
+
+#[path = "handoff_recall.rs"]
+mod recall;
+
 /// 새 session의 첫 턴으로 보내는 글.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Handoff {
@@ -526,37 +533,40 @@ fn place_steers(
 }
 
 fn tools(rows: &[LedgerRow]) -> Vec<Tool> {
-    let results: HashMap<&str, &str> = rows
+    let results: HashMap<_, _> = rows
         .iter()
         .filter_map(|row| match &row.event {
             ProviderEvent::ToolResult {
-                call_id, output, ..
-            } => Some((call_id.as_str(), output.as_str())),
-            _ => None,
-        })
-        .collect();
-    let exit_codes: HashMap<&str, Option<i32>> = rows
-        .iter()
-        .filter_map(|row| match &row.event {
-            ProviderEvent::ToolResult {
-                call_id, exit_code, ..
-            } => Some((call_id.as_str(), *exit_code)),
+                agent,
+                subagent,
+                call_id,
+                output,
+                exit_code,
+            } => Some((
+                (row.run, *agent, subagent.as_ref(), call_id.as_str()),
+                (output.as_str(), *exit_code),
+            )),
             _ => None,
         })
         .collect();
     rows.iter()
         .filter_map(|row| match &row.event {
             ProviderEvent::ToolCall {
+                agent,
+                subagent,
                 call_id,
                 activity,
                 detail,
-                ..
             } if detail.category.is_candidate() => Some(tool_of(
                 row,
                 activity,
                 detail,
-                results.get(call_id.as_str()).copied(),
-                exit_codes.get(call_id.as_str()).copied().flatten(),
+                results
+                    .get(&(row.run, *agent, subagent.as_ref(), call_id.as_str()))
+                    .map(|(output, _)| *output),
+                results
+                    .get(&(row.run, *agent, subagent.as_ref(), call_id.as_str()))
+                    .and_then(|(_, code)| *code),
             )),
             _ => None,
         })
@@ -812,6 +822,222 @@ mod tests {
             call_id: call.to_owned(),
             output: output.to_owned(),
             exit_code: None,
+        }
+    }
+
+    #[test]
+    fn packet_keeps_results_with_their_run_when_call_ids_repeat() {
+        let rows = vec![
+            row(
+                1,
+                1,
+                1,
+                Some("first task"),
+                read_call("call-1", "src/first.rs"),
+            ),
+            row(
+                2,
+                1,
+                1,
+                Some("first task"),
+                result("call-1", "first-value-731"),
+            ),
+            row(
+                3,
+                2,
+                2,
+                Some("second task"),
+                read_call("call-1", "src/second.rs"),
+            ),
+            row(
+                4,
+                2,
+                2,
+                Some("second task"),
+                result("call-1", "second-value-942"),
+            ),
+        ];
+
+        for scope in ["run", "subagent", "agent"] {
+            let mut rows = rows.clone();
+            if scope != "run" {
+                for row in &mut rows[2..] {
+                    reuse_run_with_distinct_actor(row, scope);
+                }
+            }
+
+            let packet = handoff_text(&rows, &Pending::default());
+
+            assert!(
+                packet.contains("FileRead src/first.rs\nfirst-value-731"),
+                "{scope}"
+            );
+            assert!(
+                packet.contains("FileRead src/second.rs\nsecond-value-942"),
+                "{scope}"
+            );
+        }
+    }
+
+    fn reuse_run_with_distinct_actor(row: &mut LedgerRow, scope: &str) {
+        row.run = RunId(1);
+        row.session = SessionId(1);
+        match &mut row.event {
+            ProviderEvent::ToolCall {
+                agent, subagent, ..
+            }
+            | ProviderEvent::ToolResult {
+                agent, subagent, ..
+            } => {
+                if scope == "agent" {
+                    *agent = AgentId(2);
+                } else {
+                    *subagent = Some(saturn_protocol::ids::SubagentId("child".to_owned()));
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn packet_keeps_earlier_conversation_available_after_three_turns() {
+        let mut rows = vec![row(
+            1,
+            1,
+            1,
+            Some("배포 지역을 알려줘"),
+            text_event(
+                AgentId(1),
+                "배포 지역은 ap-northeast-2, 승인 코드는 blue-731이다.",
+            ),
+        )];
+        for index in 2..=5 {
+            rows.push(row(
+                index,
+                index,
+                1,
+                Some("다음 점검"),
+                text_event(AgentId(1), "점검 완료"),
+            ));
+        }
+
+        let packet = handoff_text(&rows, &Pending::default());
+
+        assert!(packet.contains("ap-northeast-2"));
+        assert!(packet.contains("blue-731"));
+        assert!(packet.contains("[Finished]"));
+    }
+
+    // cost: time O(L + n log n), heap O(L), stack O(1)
+    // vars: L = 합성 기록 크기, n = 턴 수
+    // basis: estimate
+    #[test]
+    fn long_history_packet_reduces_text_and_keeps_release_context() {
+        let mut rows = vec![row(
+            1,
+            1,
+            1,
+            Some("배포 지역과 승인 코드를 정리해 줘"),
+            text_event(
+                AgentId(1),
+                "배포 지역은 ap-northeast-2, 승인 코드는 blue-731이다.",
+            ),
+        )];
+        for index in 2..=24 {
+            let input = if index == 24 {
+                "배포 지역과 승인 코드"
+            } else {
+                "진단 결과 확인"
+            };
+            let path = format!("logs/check-{index}.txt");
+            rows.push(row(
+                index * 3,
+                index,
+                1,
+                Some(input),
+                read_call("check", &path),
+            ));
+            rows.push(row(
+                index * 3 + 1,
+                index,
+                1,
+                Some(input),
+                result("check", &"진단 항목 정상 diagnostic passed\n".repeat(200)),
+            ));
+            rows.push(row(
+                index * 3 + 2,
+                index,
+                1,
+                Some(input),
+                text_event(AgentId(1), "점검 완료"),
+            ));
+        }
+        let pending = Pending {
+            held: vec!["배포는 승인 전까지 보류".to_owned()],
+            ..Pending::default()
+        };
+        let mut source = handoff_source(&rows, &[], &[], &pending, (&[], &[]), &budget()).unwrap();
+        source
+            .constraints
+            .push("답변은 한국어로 쓰고 승인 없이 배포하지 않는다.".to_owned());
+        let mut full = format!(
+            "{}\nHeld input: 배포는 승인 전까지 보류\n",
+            source.constraints[0]
+        );
+        let mut previous_run = None;
+        for row in &rows {
+            if previous_run != Some(row.run) {
+                full.push_str(&format!(
+                    "\nUser [Finished]: {}\n",
+                    row.input.as_deref().unwrap_or_default()
+                ));
+                previous_run = Some(row.run);
+            }
+            full.push_str(&serde_json::to_string(&row.event).unwrap());
+            full.push('\n');
+        }
+
+        let HandoffOutcome::Ready(packet) = handoff_of(&source, &budget()) else {
+            panic!("packet should fit the context budget");
+        };
+
+        assert!(
+            packet.text.contains("ap-northeast-2"),
+            "ranked={:?} packet={}",
+            source
+                .competitors
+                .iter()
+                .map(|item| item.seq.0)
+                .collect::<Vec<_>>(),
+            packet.text
+        );
+        assert!(packet.text.contains("blue-731"));
+        assert!(packet.text.contains("답변은 한국어로"));
+        assert!(packet.text.contains("배포는 승인 전까지 보류"));
+        assert!(packet.text.chars().count() * 10 < full.chars().count());
+        assert!(packet.tokens <= budget().packet_limit());
+        save_context_fixture(&full, &packet);
+    }
+
+    fn save_context_fixture(full: &str, packet: &Handoff) {
+        // 선택한 합성 시나리오의 실제 provider 재생에 쓸 입력만 별도 지정한 폴더에 남긴다.
+        if let Some(folder) = std::env::var_os("SATURN_VERIFY_DIR") {
+            let folder = std::path::PathBuf::from(folder);
+            std::fs::create_dir_all(&folder).unwrap();
+            std::fs::write(folder.join("packet.txt"), &packet.text).unwrap();
+            std::fs::write(folder.join("full.txt"), full).unwrap();
+            let metrics = serde_json::json!({
+                "turns": 24,
+                "full_chars": full.chars().count(),
+                "packet_chars": packet.text.chars().count(),
+                "packet_estimated_tokens": packet.tokens,
+                "checks": ["old_region", "old_approval_code", "active_constraint", "held_work"],
+            });
+            std::fs::write(
+                folder.join("packet-metrics.json"),
+                serde_json::to_vec_pretty(&metrics).unwrap(),
+            )
+            .unwrap();
         }
     }
 

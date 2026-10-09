@@ -61,7 +61,11 @@ pub fn typescript() -> String {
         );
         text.push('\n');
     }
-    text
+    text.lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n"
 }
 
 struct Collector<'a> {

@@ -1,0 +1,446 @@
+{
+  "learning": [
+    {
+      "id": "trait",
+      "question": "사용자가 처음 붙여 넣은 greet(&self) 예제의 trait 이름은? 식별자 하나만.",
+      "expected": [
+        "Greet"
+      ],
+      "anchor": "user turn 10",
+      "set": "development"
+    },
+    {
+      "id": "struct",
+      "question": "그 greet 예제에서 trait를 구현하는 struct 이름은? 식별자 하나만.",
+      "expected": [
+        "User"
+      ],
+      "anchor": "user turn 10",
+      "set": "development"
+    },
+    {
+      "id": "greeting",
+      "question": "그 예제의 println! 문자열은? 문자열 내용만.",
+      "expected": [
+        "안녕하세요!"
+      ],
+      "anchor": "user turn 10",
+      "set": "development"
+    },
+    {
+      "id": "unknown",
+      "question": "사용자가 정한 프로덕션 데이터베이스 비밀번호는? 없으면 unknown.",
+      "expected": [
+        "unknown"
+      ],
+      "anchor": "absence control",
+      "set": "development"
+    },
+    {
+      "id": "new_name",
+      "question": "클래스가 없다면 어떻게 설계해서 쓰는지 설명한 첫 코드 예제에서 실제로 만든 사용자의 이름은? 이름만.",
+      "expected": [
+        "민지"
+      ],
+      "anchor": "agent turn 5",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_field",
+      "question": "그 설계 설명의 첫 코드 예제에서 구조체의 데이터 필드 이름은? 식별자만.",
+      "expected": [
+        "name"
+      ],
+      "anchor": "agent turn 5",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_field_type",
+      "question": "그 설계 설명의 첫 코드 예제에서 구조체의 데이터 필드 타입은? 타입만.",
+      "expected": [
+        "String"
+      ],
+      "anchor": "agent turn 5",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_count",
+      "question": "그 설계 설명의 첫 코드 예제에서 구조체에 선언한 데이터 필드는 몇 개인가? 숫자만.",
+      "expected": [
+        "1"
+      ],
+      "anchor": "agent turn 5",
+      "set": "new_questions"
+    }
+  ],
+  "audit": [
+    {
+      "id": "rules",
+      "question": "읽기 전용 검토 요청에서 규칙 파일로 지정한 파일명은? 파일명 하나만.",
+      "expected": [
+        "CLAUDE.md"
+      ],
+      "anchor": "user turn 6",
+      "set": "development"
+    },
+    {
+      "id": "temporary",
+      "question": "같은 요청에서 임시 파일 생성 금지의 예로 든 임시 디렉터리 생성 명령 이름은? 명령 이름 하나만.",
+      "expected": [
+        "mktemp"
+      ],
+      "anchor": "user turn 6",
+      "set": "development"
+    },
+    {
+      "id": "prompt",
+      "question": "사용자는 복사용 프롬프트를 몇 개 코드 블록에 달라고 했는가? 숫자 하나만.",
+      "expected": [
+        "1"
+      ],
+      "anchor": "user turn 8",
+      "set": "development"
+    },
+    {
+      "id": "unknown",
+      "question": "이 대화에서 확인된 제품의 실제 유료 고객 수는? 없으면 unknown.",
+      "expected": [
+        "unknown"
+      ],
+      "anchor": "absence control",
+      "set": "development"
+    },
+    {
+      "id": "new_milestone",
+      "question": "읽기 전용 검토 요청에서 MVP 마일스톤 URL 끝의 번호는? 숫자만.",
+      "expected": [
+        "2"
+      ],
+      "anchor": "user turn 6",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_schema",
+      "question": "같은 요청에서 스키마 이관을 확인하라고 한 버전 표기는? V와 숫자로.",
+      "expected": [
+        "V13"
+      ],
+      "anchor": "user turn 6",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_path",
+      "question": "같은 요청에서 provider 이름 분기 허용 위치 중 codex 디렉터리 경로는? 상대 경로만.",
+      "expected": [
+        "providers/codex"
+      ],
+      "anchor": "user turn 6",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_compiler",
+      "question": "이 대화에서 확인된 Rust 컴파일러 버전 번호는? 없으면 unknown.",
+      "expected": [
+        "unknown"
+      ],
+      "anchor": "absence control",
+      "set": "new_questions"
+    }
+  ],
+  "notes": [
+    {
+      "id": "file",
+      "question": "이어 쓰기를 요청한 Markdown 파일명은? 파일명 하나만.",
+      "expected": [
+        "notes.md"
+      ],
+      "anchor": "run 1 input",
+      "set": "development"
+    },
+    {
+      "id": "first",
+      "question": "도구 읽기 결과에서 첫 번째 목록 항목의 단어는? 단어 하나만.",
+      "expected": [
+        "alpha"
+      ],
+      "anchor": "run 2 ToolResult",
+      "set": "development"
+    },
+    {
+      "id": "last",
+      "question": "마지막 입력에서 추가하라고 요청한 단어는? 단어 하나만.",
+      "expected": [
+        "zeta"
+      ],
+      "anchor": "run 3 input",
+      "set": "development"
+    },
+    {
+      "id": "unknown",
+      "question": "이 파일이 원격 저장소에 push된 커밋 해시는? 없으면 unknown.",
+      "expected": [
+        "unknown"
+      ],
+      "anchor": "absence control",
+      "set": "development"
+    },
+    {
+      "id": "new_second",
+      "question": "처음 생성하라고 요청한 목록의 두 번째 단어는? 단어만.",
+      "expected": [
+        "beta"
+      ],
+      "anchor": "run 1 input",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_third",
+      "question": "처음 생성하라고 요청한 목록의 세 번째 단어는? 단어만.",
+      "expected": [
+        "gamma"
+      ],
+      "anchor": "run 1 input",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_append",
+      "question": "두 번째 요청에서 추가하라고 한 두 단어 중 앞 단어는? 단어만.",
+      "expected": [
+        "delta"
+      ],
+      "anchor": "run 2 input",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_prefix",
+      "question": "각 줄을 시작하라고 한 ASCII 기호는? 기호 한 글자만.",
+      "expected": [
+        "-"
+      ],
+      "anchor": "run 1 input",
+      "set": "new_questions"
+    }
+  ],
+  "relay": [
+    {
+      "id": "file",
+      "question": "이어 쓰는 파일명은? 파일명 하나만.",
+      "expected": [
+        "relay.txt"
+      ],
+      "anchor": "run 1 input",
+      "set": "development"
+    },
+    {
+      "id": "first",
+      "question": "실제 파일 읽기 결과의 첫째 줄은? 줄 내용만.",
+      "expected": [
+        "CLAUDE_FINAL_622"
+      ],
+      "anchor": "run 2 ToolResult",
+      "set": "development"
+    },
+    {
+      "id": "second",
+      "question": "실제 파일 읽기 결과의 둘째 줄은? 줄 내용만.",
+      "expected": [
+        "CODEX_FINAL_622"
+      ],
+      "anchor": "run 2 ToolResult",
+      "set": "development"
+    },
+    {
+      "id": "unknown",
+      "question": "이 파일을 배포한 서비스 URL은? 없으면 unknown.",
+      "expected": [
+        "unknown"
+      ],
+      "anchor": "absence control",
+      "set": "development"
+    },
+    {
+      "id": "new_reply",
+      "question": "첫 요청에서 답변으로 출력하라고 한 마커는? 마커만.",
+      "expected": [
+        "CLAUDE_REPLY_622"
+      ],
+      "anchor": "run 1 input",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_third",
+      "question": "세 번째 줄에 추가하라고 요청한 마커는? 마커만.",
+      "expected": [
+        "CLAUDE_RETURN_622"
+      ],
+      "anchor": "run 3 input",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_end",
+      "question": "마지막 요청에서 답변 맨 뒤에 붙이라고 한 마커는? 마커만.",
+      "expected": [
+        "CLAUDE_END_622"
+      ],
+      "anchor": "run 3 input",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_count",
+      "question": "마지막 요청을 이행한 뒤 파일에 있어야 하는 줄 수는? 숫자만.",
+      "expected": [
+        "3"
+      ],
+      "anchor": "run 3 input",
+      "set": "new_questions"
+    }
+  ],
+  "interruption": [
+    {
+      "id": "first_read",
+      "question": "첫 실행에서 AGENTS.md 읽기는 파일 없음과 성공 중 무엇이었나? missing 또는 success.",
+      "expected": [
+        "missing"
+      ],
+      "anchor": "run 1 ToolResult",
+      "set": "development"
+    },
+    {
+      "id": "marker",
+      "question": "사용자가 마지막 문단에 넣으라고 한 마커는? 식별자 하나만.",
+      "expected": [
+        "INTERRUPTED_622"
+      ],
+      "anchor": "run 1 input",
+      "set": "development"
+    },
+    {
+      "id": "backup",
+      "question": "실제 읽은 AGENTS.md에서 이관 직전 백업을 며칠 보관하는가? 숫자 하나만.",
+      "expected": [
+        "14"
+      ],
+      "anchor": "run 2 ToolResult",
+      "set": "development"
+    },
+    {
+      "id": "unknown",
+      "question": "이 실행에서 확인된 프로덕션 데이터베이스 비밀번호는? 없으면 unknown.",
+      "expected": [
+        "unknown"
+      ],
+      "anchor": "absence control",
+      "set": "development"
+    },
+    {
+      "id": "new_paragraphs",
+      "question": "최초 요약 요청의 최소 문단 수는? 숫자만.",
+      "expected": [
+        "20"
+      ],
+      "anchor": "run 1 input",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_other_file",
+      "question": "최초 요청에서 AGENTS.md와 함께 읽으라고 한 다른 파일명은? 파일명만.",
+      "expected": [
+        "README.md"
+      ],
+      "anchor": "run 1 input",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_search",
+      "question": "재개 후 파일을 찾기 위해 실행한 셸 명령의 첫 실행 파일명은? 명령 이름만.",
+      "expected": [
+        "find"
+      ],
+      "anchor": "run 2 ToolCall",
+      "set": "new_questions"
+    },
+    {
+      "id": "new_language",
+      "question": "최초 요청이 지정한 요약 언어는? 한국어 언어명만.",
+      "expected": [
+        "한국어"
+      ],
+      "anchor": "run 1 input",
+      "set": "new_questions"
+    }
+  ],
+  "design-chain": [
+    {
+      "id": "document",
+      "question": "과거 답변에서 사슬 설계안을 썼다고 보고한 새 문서의 저장소 상대 경로는? 경로만.",
+      "expected": [
+        "docs/design/judge-chains.md"
+      ],
+      "anchor": "Claude source assistant answer after injected skill, original lines retained",
+      "set": "heldout_source"
+    },
+    {
+      "id": "branch",
+      "question": "그 답변에서 커밋했다고 보고한 새 브랜치 이름은? 이름만.",
+      "expected": [
+        "docs/68-judge-chains"
+      ],
+      "anchor": "Claude source assistant answer after injected skill, original lines retained",
+      "set": "heldout_source"
+    },
+    {
+      "id": "status",
+      "question": "그 답변에서 문서 상태를 무엇이라고 명시했는가? 상태 단어만.",
+      "expected": [
+        "제안"
+      ],
+      "anchor": "Claude source assistant answer after injected skill, original lines retained",
+      "set": "heldout_source"
+    },
+    {
+      "id": "push",
+      "question": "그 답변은 원격 push를 했다고 보고했는가? yes 또는 no.",
+      "expected": [
+        "no"
+      ],
+      "anchor": "Claude source assistant answer after injected skill, original lines retained",
+      "set": "heldout_source"
+    },
+    {
+      "id": "depth",
+      "question": "그 답변이 제안한 사슬의 최대 단계 수는? 숫자만.",
+      "expected": [
+        "2"
+      ],
+      "anchor": "Claude source assistant answer after injected skill, original lines retained",
+      "set": "heldout_source"
+    },
+    {
+      "id": "candidates",
+      "question": "그 답변의 좁혀 다시 읽기 모양에서 상위 후보를 몇 개 고르는가? 숫자만.",
+      "expected": [
+        "3"
+      ],
+      "anchor": "Claude source assistant answer after injected skill, original lines retained",
+      "set": "heldout_source"
+    },
+    {
+      "id": "record_field",
+      "question": "그 답변에서 실제 행동에 쓴 단계를 기록할 칸의 식별자는? 식별자만.",
+      "expected": [
+        "applied_step"
+      ],
+      "anchor": "Claude source assistant answer after injected skill, original lines retained",
+      "set": "heldout_source"
+    },
+    {
+      "id": "unknown",
+      "question": "그 대화에서 확인된 신규 제안의 배포 서비스 URL은? 없으면 unknown.",
+      "expected": [
+        "unknown"
+      ],
+      "anchor": "Claude source assistant answer after injected skill, original lines retained",
+      "set": "heldout_source"
+    }
+  ]
+}

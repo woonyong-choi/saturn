@@ -187,7 +187,7 @@ fn parse_version(output: &str) -> Option<String> {
     Some(word.unwrap_or(line).to_owned())
 }
 
-/// 어댑터 연결 하나의 동작. `ProviderClient`에 프로세스 묶음, 적용값, 줄 세운 입력 전송을 더한다.
+/// 어댑터 연결 하나의 동작. `ProviderClient`에 프로세스 묶음과 줄 세운 입력 전송을 더한다.
 pub(crate) trait AdapterConnection: ProviderClient {
     /// 그 session을 실행하는 프로세스 묶음. 모르는 session이면 `None`.
     fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId>;

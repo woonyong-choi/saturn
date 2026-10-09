@@ -1,0 +1,2878 @@
+{
+  "design_commit": "184ba2e2",
+  "cases": 9,
+  "source_clusters": 5,
+  "natural_conversation_clusters": 2,
+  "functional_record_clusters": 3,
+  "planned_sessions": 72,
+  "collected_sessions": 72,
+  "failed_sessions": 0,
+  "invalid_sessions": 1,
+  "totals": {
+    "claude/full": {
+      "correct": 32,
+      "answer_correct": 36,
+      "questions": 36,
+      "valid_sessions": 8,
+      "sessions": 9,
+      "input_tokens": 565969,
+      "not_run": 0,
+      "correct_delta_vs_full": 0,
+      "input_tokens_delta_vs_full": 0,
+      "input_reduction_percent": 0.0,
+      "lost_correct_questions": 0,
+      "gained_correct_questions": 0,
+      "failure_kinds": {
+        "invalid_session": 4
+      }
+    },
+    "claude/1000": {
+      "correct": 24,
+      "answer_correct": 24,
+      "questions": 36,
+      "valid_sessions": 9,
+      "sessions": 9,
+      "input_tokens": 216920,
+      "not_run": 0,
+      "correct_delta_vs_full": -8,
+      "input_tokens_delta_vs_full": -349049,
+      "input_reduction_percent": 61.67,
+      "lost_correct_questions": 10,
+      "gained_correct_questions": 2,
+      "failure_kinds": {
+        "abstention": 11,
+        "wrong_or_missing_answer": 1
+      }
+    },
+    "claude/4000": {
+      "correct": 32,
+      "answer_correct": 32,
+      "questions": 36,
+      "valid_sessions": 9,
+      "sessions": 9,
+      "input_tokens": 321009,
+      "not_run": 0,
+      "correct_delta_vs_full": 0,
+      "input_tokens_delta_vs_full": -244960,
+      "input_reduction_percent": 43.28,
+      "lost_correct_questions": 3,
+      "gained_correct_questions": 3,
+      "failure_kinds": {
+        "abstention": 4
+      }
+    },
+    "claude/16000": {
+      "correct": 36,
+      "answer_correct": 36,
+      "questions": 36,
+      "valid_sessions": 9,
+      "sessions": 9,
+      "input_tokens": 484552,
+      "not_run": 0,
+      "correct_delta_vs_full": 4,
+      "input_tokens_delta_vs_full": -81417,
+      "input_reduction_percent": 14.39,
+      "lost_correct_questions": 0,
+      "gained_correct_questions": 4,
+      "failure_kinds": {}
+    },
+    "codex/full": {
+      "correct": 36,
+      "answer_correct": 36,
+      "questions": 36,
+      "valid_sessions": 9,
+      "sessions": 9,
+      "input_tokens": 280938,
+      "not_run": 0,
+      "correct_delta_vs_full": 0,
+      "input_tokens_delta_vs_full": 0,
+      "input_reduction_percent": 0.0,
+      "lost_correct_questions": 0,
+      "gained_correct_questions": 0,
+      "failure_kinds": {}
+    },
+    "codex/1000": {
+      "correct": 23,
+      "answer_correct": 23,
+      "questions": 36,
+      "valid_sessions": 9,
+      "sessions": 9,
+      "input_tokens": 170804,
+      "not_run": 0,
+      "correct_delta_vs_full": -13,
+      "input_tokens_delta_vs_full": -110134,
+      "input_reduction_percent": 39.2,
+      "lost_correct_questions": 13,
+      "gained_correct_questions": 0,
+      "failure_kinds": {
+        "abstention": 13
+      }
+    },
+    "codex/4000": {
+      "correct": 32,
+      "answer_correct": 32,
+      "questions": 36,
+      "valid_sessions": 9,
+      "sessions": 9,
+      "input_tokens": 204277,
+      "not_run": 0,
+      "correct_delta_vs_full": -4,
+      "input_tokens_delta_vs_full": -76661,
+      "input_reduction_percent": 27.29,
+      "lost_correct_questions": 4,
+      "gained_correct_questions": 0,
+      "failure_kinds": {
+        "abstention": 4
+      }
+    },
+    "codex/16000": {
+      "correct": 36,
+      "answer_correct": 36,
+      "questions": 36,
+      "valid_sessions": 9,
+      "sessions": 9,
+      "input_tokens": 252371,
+      "not_run": 0,
+      "correct_delta_vs_full": 0,
+      "input_tokens_delta_vs_full": -28567,
+      "input_reduction_percent": 10.17,
+      "lost_correct_questions": 0,
+      "gained_correct_questions": 0,
+      "failure_kinds": {}
+    }
+  },
+  "sizes": [
+    {
+      "case": "learning-12",
+      "budget": 1000,
+      "full_chars": 8099,
+      "packet_chars": 3978,
+      "status": "ready",
+      "estimated_tokens": 995,
+      "over_limit": false
+    },
+    {
+      "case": "learning-12",
+      "budget": 4000,
+      "full_chars": 8099,
+      "packet_chars": 8345,
+      "status": "ready",
+      "estimated_tokens": 2087,
+      "over_limit": false
+    },
+    {
+      "case": "learning-12",
+      "budget": 16000,
+      "full_chars": 8099,
+      "packet_chars": 8345,
+      "status": "ready",
+      "estimated_tokens": 2087,
+      "over_limit": false
+    },
+    {
+      "case": "learning-30",
+      "budget": 1000,
+      "full_chars": 17805,
+      "packet_chars": 3985,
+      "status": "ready",
+      "estimated_tokens": 997,
+      "over_limit": false
+    },
+    {
+      "case": "learning-30",
+      "budget": 4000,
+      "full_chars": 17805,
+      "packet_chars": 15924,
+      "status": "ready",
+      "estimated_tokens": 3981,
+      "over_limit": false
+    },
+    {
+      "case": "learning-30",
+      "budget": 16000,
+      "full_chars": 17805,
+      "packet_chars": 17103,
+      "status": "ready",
+      "estimated_tokens": 4276,
+      "over_limit": false
+    },
+    {
+      "case": "learning-59",
+      "budget": 1000,
+      "full_chars": 50820,
+      "packet_chars": 3987,
+      "status": "ready",
+      "estimated_tokens": 997,
+      "over_limit": false
+    },
+    {
+      "case": "learning-59",
+      "budget": 4000,
+      "full_chars": 50820,
+      "packet_chars": 15914,
+      "status": "ready",
+      "estimated_tokens": 3979,
+      "over_limit": false
+    },
+    {
+      "case": "learning-59",
+      "budget": 16000,
+      "full_chars": 50820,
+      "packet_chars": 48176,
+      "status": "ready",
+      "estimated_tokens": 12044,
+      "over_limit": false
+    },
+    {
+      "case": "audit-8",
+      "budget": 1000,
+      "full_chars": 39991,
+      "packet_chars": 2892,
+      "status": "ready",
+      "estimated_tokens": 723,
+      "over_limit": false
+    },
+    {
+      "case": "audit-8",
+      "budget": 4000,
+      "full_chars": 39991,
+      "packet_chars": 8403,
+      "status": "ready",
+      "estimated_tokens": 2101,
+      "over_limit": false
+    },
+    {
+      "case": "audit-8",
+      "budget": 16000,
+      "full_chars": 39991,
+      "packet_chars": 39867,
+      "status": "ready",
+      "estimated_tokens": 9967,
+      "over_limit": false
+    },
+    {
+      "case": "audit-16",
+      "budget": 1000,
+      "full_chars": 47267,
+      "packet_chars": 3795,
+      "status": "ready",
+      "estimated_tokens": 949,
+      "over_limit": false
+    },
+    {
+      "case": "audit-16",
+      "budget": 4000,
+      "full_chars": 47267,
+      "packet_chars": 15886,
+      "status": "ready",
+      "estimated_tokens": 3972,
+      "over_limit": false
+    },
+    {
+      "case": "audit-16",
+      "budget": 16000,
+      "full_chars": 47267,
+      "packet_chars": 28098,
+      "status": "ready",
+      "estimated_tokens": 7025,
+      "over_limit": false
+    },
+    {
+      "case": "audit-26",
+      "budget": 1000,
+      "full_chars": 57903,
+      "packet_chars": 3971,
+      "status": "ready",
+      "estimated_tokens": 993,
+      "over_limit": false
+    },
+    {
+      "case": "audit-26",
+      "budget": 4000,
+      "full_chars": 57903,
+      "packet_chars": 15869,
+      "status": "ready",
+      "estimated_tokens": 3968,
+      "over_limit": false
+    },
+    {
+      "case": "audit-26",
+      "budget": 16000,
+      "full_chars": 57903,
+      "packet_chars": 38367,
+      "status": "ready",
+      "estimated_tokens": 9592,
+      "over_limit": false
+    },
+    {
+      "case": "notes",
+      "budget": 1000,
+      "full_chars": 6337,
+      "packet_chars": 2020,
+      "status": "ready",
+      "estimated_tokens": 505,
+      "over_limit": false
+    },
+    {
+      "case": "notes",
+      "budget": 4000,
+      "full_chars": 6337,
+      "packet_chars": 2020,
+      "status": "ready",
+      "estimated_tokens": 505,
+      "over_limit": false
+    },
+    {
+      "case": "notes",
+      "budget": 16000,
+      "full_chars": 6337,
+      "packet_chars": 2020,
+      "status": "ready",
+      "estimated_tokens": 505,
+      "over_limit": false
+    },
+    {
+      "case": "relay",
+      "budget": 1000,
+      "full_chars": 6681,
+      "packet_chars": 2440,
+      "status": "ready",
+      "estimated_tokens": 610,
+      "over_limit": false
+    },
+    {
+      "case": "relay",
+      "budget": 4000,
+      "full_chars": 6681,
+      "packet_chars": 2440,
+      "status": "ready",
+      "estimated_tokens": 610,
+      "over_limit": false
+    },
+    {
+      "case": "relay",
+      "budget": 16000,
+      "full_chars": 6681,
+      "packet_chars": 2440,
+      "status": "ready",
+      "estimated_tokens": 610,
+      "over_limit": false
+    },
+    {
+      "case": "interruption",
+      "budget": 1000,
+      "full_chars": 26483,
+      "packet_chars": 3732,
+      "status": "ready",
+      "estimated_tokens": 933,
+      "over_limit": false
+    },
+    {
+      "case": "interruption",
+      "budget": 4000,
+      "full_chars": 26483,
+      "packet_chars": 9990,
+      "status": "ready",
+      "estimated_tokens": 2498,
+      "over_limit": false
+    },
+    {
+      "case": "interruption",
+      "budget": 16000,
+      "full_chars": 26483,
+      "packet_chars": 23907,
+      "status": "ready",
+      "estimated_tokens": 5977,
+      "over_limit": false
+    }
+  ],
+  "trials": [
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-12",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 31896,
+      "elapsed_s": 7.3553187909999735,
+      "raw_sha256": "0823bcda4377d8099f06e42dc7431d42f7c5996ef8a0776175e6bf7a0a42e029"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-12",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25100,
+      "elapsed_s": 7.803408665999996,
+      "raw_sha256": "561aa41549d3240021196c81e5294d3e2024758f8a8b80f19b8fdce2362d6092"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-12",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 31570,
+      "elapsed_s": 8.157984040999999,
+      "raw_sha256": "68e639546d6f7a1677da0a8a6acaf1b1123179405c62db282c0b280b83bf2ca4"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-12",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 31489,
+      "elapsed_s": 9.076554750000001,
+      "raw_sha256": "9dd87fc3331a3e674281fc0f445600afa29788f866494e473a6d9dcc025e3803"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-30",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 45557,
+      "elapsed_s": 8.21875424999999,
+      "raw_sha256": "2d3d1c36732b7cf509ebffacfa5ffe1c8f93b35217103fc1f71f67ffec41d52b"
+    },
+    {
+      "failure_kinds": {
+        "trait": "abstention",
+        "greeting": "wrong_or_missing_answer"
+      },
+      "answer_correct": 2,
+      "answer_checks": {
+        "trait": false,
+        "struct": true,
+        "greeting": false,
+        "unknown": true
+      },
+      "case": "learning-30",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 2,
+      "questions": 4,
+      "checks": {
+        "trait": false,
+        "struct": true,
+        "greeting": false,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "unknown",
+        "struct": "User",
+        "greeting": "안녕, {}!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 24966,
+      "elapsed_s": 10.985515667000001,
+      "raw_sha256": "9e680fd6f7a7e722211efb045be719c6e6e4b4a2eea1f0173f11791ecbba4e92"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-30",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 42291,
+      "elapsed_s": 8.928815999999998,
+      "raw_sha256": "d6d4fa97af68dd69d2d57c47654f64a3f568d4c8aaa18746aa0e3d66dbef0792"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-30",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 44082,
+      "elapsed_s": 8.546413999999999,
+      "raw_sha256": "9f070626bf1cdfd98739809610dc6e4ea244b9c597f597336cedf0bc01a900d3"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-59",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 89836,
+      "elapsed_s": 8.986130459000002,
+      "raw_sha256": "ffb79a11573e1f8db61395f76b4fb1a5c52c7c8c59ed5e088cc7639e650d3ccb"
+    },
+    {
+      "failure_kinds": {
+        "trait": "abstention",
+        "struct": "abstention",
+        "greeting": "abstention"
+      },
+      "answer_correct": 1,
+      "answer_checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true
+      },
+      "case": "learning-59",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 1,
+      "questions": 4,
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "unknown",
+        "struct": "unknown",
+        "greeting": "unknown",
+        "unknown": "unknown"
+      },
+      "input_tokens": 24919,
+      "elapsed_s": 9.209690791000014,
+      "raw_sha256": "cb8408f6a3445374c9d43ed3111ae0fad26da4805171fc69094bbf803f61f40f"
+    },
+    {
+      "failure_kinds": {
+        "trait": "abstention",
+        "struct": "abstention",
+        "greeting": "abstention"
+      },
+      "answer_correct": 1,
+      "answer_checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true
+      },
+      "case": "learning-59",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 1,
+      "questions": 4,
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "unknown",
+        "struct": "unknown",
+        "greeting": "unknown",
+        "unknown": "unknown"
+      },
+      "input_tokens": 42816,
+      "elapsed_s": 9.892437041999983,
+      "raw_sha256": "bfc5870544ebec079448f34bba9457941f5730d0285298b0785611fa67e37e42"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-59",
+      "cluster": "learning",
+      "provider": "claude",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 86058,
+      "elapsed_s": 8.054812333000001,
+      "raw_sha256": "b1537d7127a207b1fcf4805e1810daee295d7691e0e99c387cb591a17a9d98d0"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-8",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 85780,
+      "elapsed_s": 8.93029899999999,
+      "raw_sha256": "36c8274b02516263682425ce38bbbcf1fc45beec929968585502b26e6c8a90f1"
+    },
+    {
+      "failure_kinds": {
+        "rules": "abstention",
+        "temporary": "abstention"
+      },
+      "answer_correct": 2,
+      "answer_checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-8",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 2,
+      "questions": 4,
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "unknown",
+        "temporary": "unknown",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 24146,
+      "elapsed_s": 10.652190207999979,
+      "raw_sha256": "42c11f17d775fd0436b8f7e6524ef5aa808762cf545bdbcfe957d4e330acf574"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-8",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 33806,
+      "elapsed_s": 11.074863042000004,
+      "raw_sha256": "d4ca746031e970b27fe86406f3d112ff8e9a7e8d8e947c7928ed49605b806794"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-8",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 85221,
+      "elapsed_s": 16.949938207999992,
+      "raw_sha256": "34a1542a6c982177239d3e949ce94e13215ccb19f4c94d372fdf720a8102cf52"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-16",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 98905,
+      "elapsed_s": 11.895505291000006,
+      "raw_sha256": "88c988a6edecb766395b77820a12dee0c1ca059ca9ae7999e90711343b70a9d0"
+    },
+    {
+      "failure_kinds": {
+        "rules": "abstention",
+        "temporary": "abstention"
+      },
+      "answer_correct": 2,
+      "answer_checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-16",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 2,
+      "questions": 4,
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "unknown",
+        "temporary": "unknown",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25836,
+      "elapsed_s": 12.302246292000007,
+      "raw_sha256": "72d4161a2910051f2ac9a4c5a91bb348895cd5bcfdb6b08d49694491b5fb9900"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-16",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 47061,
+      "elapsed_s": 11.209334750000039,
+      "raw_sha256": "5a71e1042f701e6cff216846c910819032793983b3c7f2552ecf29c6fc8a6191"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-16",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 68098,
+      "elapsed_s": 15.653103208999994,
+      "raw_sha256": "9d3482defeda1a643f055ae9ddcd485c17d3a1647e3dc948ae4c9e5a04c56b6b"
+    },
+    {
+      "failure_kinds": {
+        "rules": "invalid_session",
+        "temporary": "invalid_session",
+        "prompt": "invalid_session",
+        "unknown": "invalid_session"
+      },
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-26",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "full",
+      "status": "ok",
+      "valid": false,
+      "correct": 0,
+      "questions": 4,
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 119320,
+      "elapsed_s": 22.83286774999999,
+      "raw_sha256": "d42de631b6315a4b6c0a112d14ad8b40356cd6758255b5a63ebc9fa9ec58ba84"
+    },
+    {
+      "failure_kinds": {
+        "rules": "abstention",
+        "temporary": "abstention"
+      },
+      "answer_correct": 2,
+      "answer_checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-26",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 2,
+      "questions": 4,
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "unknown",
+        "temporary": "unknown",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 26544,
+      "elapsed_s": 11.758777208999987,
+      "raw_sha256": "b05116d396246dd31fa424d0399a57174c66d6314ff59db63651d12811854bb8"
+    },
+    {
+      "failure_kinds": {
+        "rules": "abstention"
+      },
+      "answer_correct": 3,
+      "answer_checks": {
+        "rules": false,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-26",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 3,
+      "questions": 4,
+      "checks": {
+        "rules": false,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "unknown",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 48254,
+      "elapsed_s": 15.994487165999999,
+      "raw_sha256": "c6c2fe58f6f4c9dc6ce6fb7bfda10c4926973bbe412301139e313d1bda8474c9"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-26",
+      "cluster": "audit",
+      "provider": "claude",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 86676,
+      "elapsed_s": 14.157146292,
+      "raw_sha256": "dd36f18a7a7873d6e0923ed83c10169cef14a39a7ed3d795cd8da3d996216b53"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "case": "notes",
+      "cluster": "notes",
+      "provider": "claude",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25309,
+      "elapsed_s": 8.924418583000033,
+      "raw_sha256": "386b97d8d9a64a87afb37c36ad788df7b9cbf1b3cd6fdac6bff23d2f032d0dc7"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "case": "notes",
+      "cluster": "notes",
+      "provider": "claude",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown"
+      },
+      "input_tokens": 21074,
+      "elapsed_s": 8.016703499999977,
+      "raw_sha256": "20fede6385f752c1a0b8459d11590197dd341b8c0a2c94e1d8757314623d3ed7"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "case": "notes",
+      "cluster": "notes",
+      "provider": "claude",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown"
+      },
+      "input_tokens": 21129,
+      "elapsed_s": 8.495825000000025,
+      "raw_sha256": "e65481c42e597911f11c9426221adbefc53dfd0647c5715d3f3650d25db8d33b"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "case": "notes",
+      "cluster": "notes",
+      "provider": "claude",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown"
+      },
+      "input_tokens": 21082,
+      "elapsed_s": 7.355059541000003,
+      "raw_sha256": "68e8bf885a14da2a5325b11164b959e1c5948e793accc19411926b35e406fe8b"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "case": "relay",
+      "cluster": "relay",
+      "provider": "claude",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25505,
+      "elapsed_s": 7.115875082999992,
+      "raw_sha256": "f5d0c92809cf826164474e4d0b6cdcfd330bddf95f11cb5ac65f32dfb490d664"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "case": "relay",
+      "cluster": "relay",
+      "provider": "claude",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown"
+      },
+      "input_tokens": 21386,
+      "elapsed_s": 7.84950441700002,
+      "raw_sha256": "950265994a54e41add6aaec4a921cfb9e9cfc0d66f2dc77e4a766286b85831fd"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "case": "relay",
+      "cluster": "relay",
+      "provider": "claude",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown"
+      },
+      "input_tokens": 21295,
+      "elapsed_s": 7.991313874999975,
+      "raw_sha256": "e8e515e149cf56391dce05841615213259c4c27c2d67a48db9e1b16084dcc706"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "case": "relay",
+      "cluster": "relay",
+      "provider": "claude",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown"
+      },
+      "input_tokens": 21402,
+      "elapsed_s": 9.731604041000004,
+      "raw_sha256": "66c52fb340f624b97987d1075677d37d31e9cb906405f1654d7ec440f5fc5e87"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "case": "interruption",
+      "cluster": "interruption",
+      "provider": "claude",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown"
+      },
+      "input_tokens": 43861,
+      "elapsed_s": 14.689113833,
+      "raw_sha256": "87469f0146387f57396c01634cfd51aff3b7684d487360ebd4589af9804ca195"
+    },
+    {
+      "failure_kinds": {
+        "backup": "abstention"
+      },
+      "answer_correct": 3,
+      "answer_checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": false,
+        "unknown": true
+      },
+      "case": "interruption",
+      "cluster": "interruption",
+      "provider": "claude",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 3,
+      "questions": 4,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": false,
+        "unknown": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "unknown",
+        "unknown": "unknown"
+      },
+      "input_tokens": 22949,
+      "elapsed_s": 10.268296207999981,
+      "raw_sha256": "7fa22eb462d17c7f14f5ac963c255792162163b7db7c4fc72a0dcda7158d4030"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "case": "interruption",
+      "cluster": "interruption",
+      "provider": "claude",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown"
+      },
+      "input_tokens": 32787,
+      "elapsed_s": 10.260324125000011,
+      "raw_sha256": "367483d9a033a77391572e6566509105931131f1fc315b8f51e2e9e98ad2eccc"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "case": "interruption",
+      "cluster": "interruption",
+      "provider": "claude",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown"
+      },
+      "input_tokens": 40444,
+      "elapsed_s": 11.91523137499999,
+      "raw_sha256": "abdfe540b0d8e4cb860583e044d7139dc745e422c3b7ad842c18969bba588890"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-12",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 21499,
+      "elapsed_s": 4.9094764999999825,
+      "raw_sha256": "29ee0a3735c087f556add59137a5fa9820ea76cd8c0b7afe68f2c4d62cf2a559"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-12",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19277,
+      "elapsed_s": 3.6064949590000026,
+      "raw_sha256": "57d8acc2f9670eea0cf3af28a77a61f22a1eb1ac5de44e51d60df49678e3d556"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-12",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 21255,
+      "elapsed_s": 4.305751084000004,
+      "raw_sha256": "6ca34a3f6e962a30f794b3a862d6911110dc76eb134359ee9b1155f4844deeaf"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-12",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 21255,
+      "elapsed_s": 4.506959291,
+      "raw_sha256": "96e5079ab4a2010caf09e7f8583fb31fe1ba8e0ea19b0ffc12579fa748e7dd31"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-30",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 26054,
+      "elapsed_s": 4.903666749999999,
+      "raw_sha256": "df6ab04c6a6f074364fd64c1e7159d0215aca93cb1f00db8863295247f58195d"
+    },
+    {
+      "failure_kinds": {
+        "trait": "abstention",
+        "struct": "abstention",
+        "greeting": "abstention"
+      },
+      "answer_correct": 1,
+      "answer_checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true
+      },
+      "case": "learning-30",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 1,
+      "questions": 4,
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "unknown",
+        "struct": "unknown",
+        "greeting": "unknown",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19328,
+      "elapsed_s": 7.197724375,
+      "raw_sha256": "d75b9cad563b2d5e167f00ad70afb56c47cc602d755f071fec20b9b982367967"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-30",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 24804,
+      "elapsed_s": 5.418872082999997,
+      "raw_sha256": "96f95fcdc20bece4f22c745045c8ee79f42855f3ee12d5110ddb9a489579b88b"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-30",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25360,
+      "elapsed_s": 7.5385251669999995,
+      "raw_sha256": "8ace50a66303afbc9c003109e19fde3d3f5d33f0118724855a4762942463e987"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-59",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 40737,
+      "elapsed_s": 8.210204625000003,
+      "raw_sha256": "9287386d76c69fc6456f6eb0c409fc29918fbb50729d0b8112917878b8f15293"
+    },
+    {
+      "failure_kinds": {
+        "trait": "abstention",
+        "struct": "abstention",
+        "greeting": "abstention"
+      },
+      "answer_correct": 1,
+      "answer_checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true
+      },
+      "case": "learning-59",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 1,
+      "questions": 4,
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "unknown",
+        "struct": "unknown",
+        "greeting": "unknown",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19208,
+      "elapsed_s": 4.882951082999995,
+      "raw_sha256": "7390404d2b97b001fcc3d2054925d343062ae3db975a1b0c98f5875706e5e5bd"
+    },
+    {
+      "failure_kinds": {
+        "trait": "abstention",
+        "struct": "abstention",
+        "greeting": "abstention"
+      },
+      "answer_correct": 1,
+      "answer_checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true
+      },
+      "case": "learning-59",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 1,
+      "questions": 4,
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "unknown",
+        "struct": "unknown",
+        "greeting": "unknown",
+        "unknown": "unknown"
+      },
+      "input_tokens": 24938,
+      "elapsed_s": 4.895297083000003,
+      "raw_sha256": "94177a50cb6553ed03b9d75f8285cca39152e75bdd187c2f5ed3c3e247578b89"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "case": "learning-59",
+      "cluster": "learning",
+      "provider": "codex",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown"
+      },
+      "input_tokens": 38866,
+      "elapsed_s": 4.2180972910000065,
+      "raw_sha256": "e28341c7813058496a69220c2eee6d7bf4c036b232101923e03b8fb6515681f9"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-8",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 37578,
+      "elapsed_s": 5.443839041999993,
+      "raw_sha256": "bda46d8aafde96bd7774e61c66ffff50e2c4827b68bd9290b77a8a9829f850ca"
+    },
+    {
+      "failure_kinds": {
+        "rules": "abstention",
+        "temporary": "abstention"
+      },
+      "answer_correct": 2,
+      "answer_checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-8",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 2,
+      "questions": 4,
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "unknown",
+        "temporary": "unknown",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 18904,
+      "elapsed_s": 5.3599366669999995,
+      "raw_sha256": "124115d9b27fe5e622c9a06bd3cc8b4523dff4fc87c714bbd325d372b03ca7d3"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-8",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 21692,
+      "elapsed_s": 5.565910541000001,
+      "raw_sha256": "9e53e29dce457b4f5e780d55b16f31a2ef69565ead540ea58a1a78bcb15b4de1"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-8",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 36906,
+      "elapsed_s": 7.893330332999994,
+      "raw_sha256": "d8f2b1b3a1aea977048a15cba85095291c87a7cf0fa4b3768a6ff33e7e31ff24"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-16",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 41332,
+      "elapsed_s": 5.747566249999991,
+      "raw_sha256": "1099f6be67f58b4793cca3e6f766884eed0b92bad48b24c847453abd7804722c"
+    },
+    {
+      "failure_kinds": {
+        "rules": "abstention",
+        "temporary": "abstention"
+      },
+      "answer_correct": 2,
+      "answer_checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-16",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 2,
+      "questions": 4,
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "unknown",
+        "temporary": "unknown",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19406,
+      "elapsed_s": 5.3350770000000125,
+      "raw_sha256": "4ebb11a5f82461bc8b806965b1034c9189d69b7940897b466c06780c881c76c1"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-16",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25517,
+      "elapsed_s": 11.60008533300001,
+      "raw_sha256": "b7528e708336b14aa23133defc58860d4d22465c20da5a34d4dcd5b711c177a6"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-16",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 31449,
+      "elapsed_s": 5.228277958,
+      "raw_sha256": "733e4d4bad2c66923e29fe1114611c78a7e3c915a7c84fa401ff6899022c70b8"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-26",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 47038,
+      "elapsed_s": 5.41166104200002,
+      "raw_sha256": "db2223136d1e8765ba48d0c435bd62ee81902747d9089c4a6e597d56bf50c53b"
+    },
+    {
+      "failure_kinds": {
+        "rules": "abstention",
+        "temporary": "abstention"
+      },
+      "answer_correct": 2,
+      "answer_checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-26",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 2,
+      "questions": 4,
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "unknown",
+        "temporary": "unknown",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19526,
+      "elapsed_s": 6.804240375000006,
+      "raw_sha256": "eda46a9bb8c90b7b7c4d4381bdb689d9eeded1d79990dd78dd39a8e54a186f25"
+    },
+    {
+      "failure_kinds": {
+        "rules": "abstention"
+      },
+      "answer_correct": 3,
+      "answer_checks": {
+        "rules": false,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-26",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 3,
+      "questions": 4,
+      "checks": {
+        "rules": false,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "unknown",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25759,
+      "elapsed_s": 5.907062957999983,
+      "raw_sha256": "1a415ac519b272744d59bf8d080b28c6c60fb1219324d5b9329cb30551dc0905"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "case": "audit-26",
+      "cluster": "audit",
+      "provider": "codex",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 36966,
+      "elapsed_s": 9.28056725,
+      "raw_sha256": "ee16cb7622604d79c87cd5bba9133882d667eef8815ec9be9e25a94ac22be9c5"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "case": "notes",
+      "cluster": "notes",
+      "provider": "codex",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown"
+      },
+      "input_tokens": 20042,
+      "elapsed_s": 5.723600375000018,
+      "raw_sha256": "5a48cb40956190c569f1c647427d1426fab914c7b64ab5f108634435760abf2c"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "case": "notes",
+      "cluster": "notes",
+      "provider": "codex",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown"
+      },
+      "input_tokens": 18143,
+      "elapsed_s": 6.332536167000001,
+      "raw_sha256": "ba14c02e49079093ad0fb787f3930e01b67ee5943d6651da9fb290e349d8087b"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "case": "notes",
+      "cluster": "notes",
+      "provider": "codex",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown"
+      },
+      "input_tokens": 18143,
+      "elapsed_s": 4.038898500000002,
+      "raw_sha256": "16638783217600c6cfd2484ffbf360cb8079892b3d1c24bc78bd69134fd290ae"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "case": "notes",
+      "cluster": "notes",
+      "provider": "codex",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown"
+      },
+      "input_tokens": 18143,
+      "elapsed_s": 4.899541791999994,
+      "raw_sha256": "0e6d03143ea61ed6d9711b27c4dd0a92727afdea16dad7989372728680b64040"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "case": "relay",
+      "cluster": "relay",
+      "provider": "codex",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown"
+      },
+      "input_tokens": 20131,
+      "elapsed_s": 4.7662245409999855,
+      "raw_sha256": "ae87c39d4e3ca0f6614de5bbf8b9a9286ea7e9d4a65a1858a5f55ab3b993ae4a"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "case": "relay",
+      "cluster": "relay",
+      "provider": "codex",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown"
+      },
+      "input_tokens": 18228,
+      "elapsed_s": 4.679373916000003,
+      "raw_sha256": "761a31dcc3ed3b87fec5d6b5c9c46d123b3250bd6de5225456a843d44a3d2222"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "case": "relay",
+      "cluster": "relay",
+      "provider": "codex",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown"
+      },
+      "input_tokens": 18228,
+      "elapsed_s": 10.28094854199999,
+      "raw_sha256": "44f9e9215ed9330536c291e373c1ced52e2539f215d067dc8d2f098680c41af6"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "case": "relay",
+      "cluster": "relay",
+      "provider": "codex",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown"
+      },
+      "input_tokens": 18228,
+      "elapsed_s": 4.558821542000004,
+      "raw_sha256": "12da81fc2bd5ac56df6fa7347361a881f807389ceb9bdb12713840137320e0f3"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "case": "interruption",
+      "cluster": "interruption",
+      "provider": "codex",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown"
+      },
+      "input_tokens": 26527,
+      "elapsed_s": 8.628164625,
+      "raw_sha256": "0b2a0df7708a31fad6bfc33223fa7a5d9b8dfbcad199f9ab7fdb3d28c5274260"
+    },
+    {
+      "failure_kinds": {
+        "backup": "abstention"
+      },
+      "answer_correct": 3,
+      "answer_checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": false,
+        "unknown": true
+      },
+      "case": "interruption",
+      "cluster": "interruption",
+      "provider": "codex",
+      "arm": "1000",
+      "status": "ok",
+      "valid": true,
+      "correct": 3,
+      "questions": 4,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": false,
+        "unknown": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "unknown",
+        "unknown": "unknown"
+      },
+      "input_tokens": 18784,
+      "elapsed_s": 12.053333667000004,
+      "raw_sha256": "6ff0e49c6161604ef30b2fa603d6cf1ce2a6fc67f446377990cbefb531a74483"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "case": "interruption",
+      "cluster": "interruption",
+      "provider": "codex",
+      "arm": "4000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown"
+      },
+      "input_tokens": 23941,
+      "elapsed_s": 12.411170707999986,
+      "raw_sha256": "218221f5fa9e75831383f5a73d21e04295e7dc62c7d75ed5b92d0a3af733e026"
+    },
+    {
+      "failure_kinds": {},
+      "answer_correct": 4,
+      "answer_checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "case": "interruption",
+      "cluster": "interruption",
+      "provider": "codex",
+      "arm": "16000",
+      "status": "ok",
+      "valid": true,
+      "correct": 4,
+      "questions": 4,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25198,
+      "elapsed_s": 4.449460708999993,
+      "raw_sha256": "5eaf351cee7fabaac4143f8a1bf56d1429c2cb48ed6db36d346a62946e8397cc"
+    }
+  ],
+  "inference": "purposive dependent sample; no population confidence interval or general reliability claim",
+  "verification": {
+    "workspace": {
+      "passed": 1910,
+      "failed": 0,
+      "ignored": 4
+    },
+    "child_load": {
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0
+    },
+    "tui_after_translation_cleanup": {
+      "passed": 466,
+      "failed": 0,
+      "ignored": 0
+    },
+    "parser_passed": 3,
+    "packet_replay": {
+      "packets": 27,
+      "byte_identical": true
+    },
+    "codegen": {
+      "exit": 0,
+      "deterministic": true,
+      "files": 2,
+      "stderr": ""
+    },
+    "regression_before": {
+      "passed": 2,
+      "failed": 2,
+      "ignored": 0
+    },
+    "regression_after": {
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0
+    },
+    "synthetic_smoke": {
+      "checks": [
+        "old_region",
+        "old_approval_code",
+        "active_constraint",
+        "held_work"
+      ],
+      "full_chars": 137371,
+      "packet_chars": 3982,
+      "packet_estimated_tokens": 996,
+      "turns": 24
+    }
+  },
+  "archived_sessions": {
+    "initial": 72,
+    "corrected": 72,
+    "total": 144
+  },
+  "packet_estimator_chars_per_token": 4
+}

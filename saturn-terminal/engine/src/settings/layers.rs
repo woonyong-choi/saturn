@@ -110,10 +110,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("tui.screen", Kind::OneOf(&["auto", "full", "plain"])),
     ("tui.on_exit", Kind::OneOf(&["background", "stop", "ask"])),
     ("notify.on_done", Kind::Flag),
-    (
-        "router.mode",
-        Kind::OneOf(&["manual", "jev", "saturn", "collect"]),
-    ),
+    ("router.mode", Kind::OneOf(&["manual", "jev", "saturn"])),
     ("router.endpoint", Kind::Text),
     (
         "router.key.info.source",
