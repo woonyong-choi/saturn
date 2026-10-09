@@ -1,0 +1,36 @@
+{
+  "analysis": "post-hoc validation correction, not a change to model thresholds",
+  "raw_records": 4000,
+  "strict_valid": 3982,
+  "recovered": 18,
+  "decimal_sums": {
+    "0.99": 18
+  },
+  "corrected_valid": 4000,
+  "remaining_failures": 0,
+  "raw_responses_modified": false,
+  "repeated_api_calls": 0,
+  "corrected_arms": [
+    {
+      "arm": "baseline",
+      "auto_threshold": 0.9,
+      "ask_threshold": 0.7,
+      "auto_count": 29,
+      "ask_count": 558
+    },
+    {
+      "arm": "korean",
+      "auto_threshold": 0.77,
+      "ask_threshold": 0.43,
+      "auto_count": 57,
+      "ask_count": 301
+    },
+    {
+      "arm": "choice",
+      "auto_threshold": 0.9,
+      "ask_threshold": 0.7,
+      "auto_count": 63,
+      "ask_count": 98
+    }
+  ]
+}

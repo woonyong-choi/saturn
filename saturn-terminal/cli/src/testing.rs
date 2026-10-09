@@ -25,13 +25,6 @@ impl Reply {
         Self::default()
     }
 
-    pub(crate) fn with(notifications: Vec<Notification>) -> Self {
-        Self {
-            notifications,
-            ..Self::default()
-        }
-    }
-
     /// 조회 요청의 응답 `result`.
     pub(crate) fn result(result: QueryResult) -> Self {
         Self {

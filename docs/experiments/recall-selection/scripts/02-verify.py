@@ -30,6 +30,11 @@ def verify() -> None:
         for relative, digest in json.loads((run / "seal.json").read_text()).items():
             if hashlib.sha256((run / relative).read_bytes()).hexdigest() != digest:
                 raise RuntimeError(f"sealed input changed: {relative}")
+        reuse_seal = run / "reuse-seal.json"
+        if reuse_seal.exists():
+            for relative, digest in json.loads(reuse_seal.read_text()).items():
+                if hashlib.sha256((run / relative).read_bytes()).hexdigest() != digest:
+                    raise RuntimeError("reuse mapping changed")
         counts = dict(planned=0, completed=0, failed=0, missing=0)
         for job in json.loads((run / "calls-plan.json").read_text()):
             for provider in ["claude", "codex"]:

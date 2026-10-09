@@ -7,7 +7,7 @@ mod remote;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use saturn_core::routers::failure::{self, CompactFailure, TransitionStarter};
+use saturn_core::routers::failure;
 use saturn_core::routers::{
     AnswerKind, Method, Question, QuestionSetId, RouteDecision, RouterClient, RouterError,
     RouterRequest, RouterResponse,
@@ -148,6 +148,7 @@ impl std::fmt::Debug for RouterExchange {
             Err(RouterError::Superseded) => "Superseded",
         };
         f.debug_struct("RouterExchange")
+            .field("unknown_cost_calls", &self.unknown_cost_calls)
             .field("sent_len", &self.sent.len())
             .field("received_len", &self.received.as_ref().map(String::len))
             .field("result", &result)
@@ -350,17 +351,6 @@ impl Routers {
     ) -> RouteDecision {
         tracing::warn!("{}", failure::SKIP_MODEL_MESSAGE);
         failure::route_after_failure(request, revision, settings)
-    }
-
-    /// 패킷의 `compact` 판단이 재시도 끝에 실패했을 때 쓴다. router가 시작한 전환은 건너뛰고 현재 모델로 진행한다. 강제한 전환은 하고 경쟁 구역을 순위 순서로 채운다.
-    pub(crate) fn compact_after_failure(&self, starter: TransitionStarter) -> CompactFailure {
-        let action = failure::compact_failure(starter);
-        let message = match action {
-            CompactFailure::SkipTransition => failure::SKIP_MODEL_MESSAGE,
-            CompactFailure::FillByRank => failure::SKIP_RECORD_MESSAGE,
-        };
-        tracing::warn!("{message}");
-        action
     }
 
     /// 원문은 `Masker`로 가린 뒤 넘기고, `/record off` 채팅이면 `store`가 쓰지 않는다.
@@ -661,21 +651,6 @@ mod tests {
         assert!(!log.contains(KEY));
         assert_eq!(decision.model, None);
         assert!(decision.keep_current);
-    }
-
-    #[test]
-    fn compact_after_failure_logs_by_who_started_the_transition() {
-        let routers = routers_without_transport();
-
-        let (skipped, skipped_log) =
-            logged(|| routers.compact_after_failure(TransitionStarter::Router));
-        let (filled, filled_log) =
-            logged(|| routers.compact_after_failure(TransitionStarter::Forced));
-
-        assert_eq!(skipped, CompactFailure::SkipTransition);
-        assert!(skipped_log.contains("판단 모델 실패로 모델 선택을 건너뜁니다"));
-        assert_eq!(filled, CompactFailure::FillByRank);
-        assert!(filled_log.contains("판단 모델 실패로 기록 선택을 건너뜁니다"));
     }
 
     #[tokio::test]

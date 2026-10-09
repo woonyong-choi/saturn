@@ -225,6 +225,7 @@ fn keeps_model(session: &SessionRecord, model: Option<&str>) -> bool {
 
 impl Engine {
     /// 다음 입력부터 `provider`로 보낸다. 그 provider의 session이 열리면 지운다. 입력에 고정한 모델이 있으면 그 모델의 provider가 먼저다.
+    #[cfg(test)]
     pub(crate) fn switch_provider(&mut self, chat: ChatId, provider: Provider) {
         self.flow.switch_to.insert(chat, provider);
     }

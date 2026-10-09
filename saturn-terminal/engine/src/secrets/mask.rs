@@ -1,8 +1,6 @@
 //! 출력 마스킹: router 키와 일치하는 문자열을 로그, 오류, 디버그 출력, 판단 기록 저장 전에 가린다.
 //! 설계: docs/design/router-key-security.md
 
-use std::io::Write;
-
 use crate::passes::TOKEN_PREFIX;
 
 /// 끝 4자리도 남기지 않는다. 초안 값.
@@ -86,57 +84,6 @@ impl std::fmt::Debug for Masker {
         f.debug_struct("Masker")
             .field("needles", &self.needles.len())
             .finish()
-    }
-}
-
-/// 키가 두 번의 쓰기로 나뉘어도 가리도록 줄바꿈까지 모았다가 쓴다.
-pub(crate) struct MaskingWriter<W: Write> {
-    inner: W,
-    masker: Masker,
-    line: Vec<u8>,
-}
-
-impl<W: Write> MaskingWriter<W> {
-    pub(crate) fn new(inner: W, masker: Masker) -> Self {
-        Self {
-            inner,
-            masker,
-            line: Vec::new(),
-        }
-    }
-}
-
-impl<W: Write> Write for MaskingWriter<W> {
-    /// 남은 조각은 버퍼에 둔다.
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.line.extend_from_slice(buf);
-        while let Some(end) = self.line.iter().position(|byte| *byte == b'\n') {
-            let rest = self.line.split_off(end + 1);
-            let line = std::mem::replace(&mut self.line, rest);
-            self.write_masked(&line)?;
-        }
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.inner.flush()
-    }
-}
-
-impl<W: Write> std::fmt::Debug for MaskingWriter<W> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MaskingWriter")
-            .field("buffered_bytes", &self.line.len())
-            .finish()
-    }
-}
-
-impl<W: Write> MaskingWriter<W> {
-    /// 키는 ASCII라 깨진 UTF-8 바이트를 바꾼 뒤 가려도 맞는다.
-    fn write_masked(&mut self, line: &[u8]) -> std::io::Result<()> {
-        let text = String::from_utf8_lossy(line);
-        self.inner
-            .write_all(self.masker.mask(&text).as_str().as_bytes())
     }
 }
 
@@ -229,37 +176,5 @@ mod tests {
         let debug = format!("{masker:?}");
 
         assert_eq!(debug, "Masker { needles: 1 }");
-    }
-
-    #[test]
-    fn writer_masks_key_split_across_writes() {
-        let masker = Masker::new(vec![KEY.to_owned()]);
-        let mut writer = MaskingWriter::new(Vec::new(), masker);
-
-        writer
-            .write_all(format!("first {}", &KEY[..6]).as_bytes())
-            .unwrap();
-        writer
-            .write_all(format!("{} end\nsecond {KEY}", &KEY[6..]).as_bytes())
-            .unwrap();
-        writer.write_all(b"\n").unwrap();
-        writer.flush().unwrap();
-
-        let out = String::from_utf8(writer.inner).unwrap();
-        assert_eq!(out, "first [redacted] end\nsecond [redacted]\n");
-    }
-
-    #[test]
-    fn flush_and_debug_do_not_expose_partial_key() {
-        let mut writer = MaskingWriter::new(Vec::new(), Masker::new(vec![KEY.to_owned()]));
-        writer.write_all(&KEY.as_bytes()[..8]).unwrap();
-        writer.flush().unwrap();
-
-        assert!(writer.inner.is_empty());
-        assert!(!format!("{writer:?}").contains(&KEY[..8]));
-
-        writer.write_all(&KEY.as_bytes()[8..]).unwrap();
-        writer.write_all(b"\n").unwrap();
-        assert_eq!(writer.inner, b"[redacted]\n");
     }
 }

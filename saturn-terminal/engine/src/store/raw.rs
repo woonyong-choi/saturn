@@ -1,9 +1,12 @@
 //! 실행별 원시 기록: 실행 중 이어 쓰기, 끝나면 gzip 압축, 읽을 때 자동 해제.
 //! 설계: docs/design/records.md
 
-use std::io::{Read, Write};
+#[cfg(test)]
+use std::io::Read;
+use std::io::Write;
 
 use flate2::Compression;
+#[cfg(test)]
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use saturn_protocol::ids::RunId;
@@ -25,6 +28,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 실행이면 `NotFound`, 이미 압축한(끝난) 실행이면 `Database`.
+    #[cfg(test)]
     pub(crate) async fn append_raw(&self, run: RunId, chunk: &[u8]) -> Result<(), StoreError> {
         let mut tx = self.pool.begin().await?;
         let sealed: Option<bool> =
@@ -86,6 +90,7 @@ impl Store {
     ///
     /// # Errors
     /// 해제 실패면 `Compression`, 대조가 다르면 `DigestMismatch`, 없는 실행이면 `NotFound`.
+    #[cfg(test)]
     pub(crate) async fn read_raw(&self, run: RunId) -> Result<Vec<u8>, StoreError> {
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query("SELECT raw_gzip, raw_hash, raw_size FROM runs WHERE id = ?")
@@ -111,6 +116,7 @@ impl Store {
     }
 
     /// 실행 중이면 지금까지 쓴 바이트로 계산한다.
+    #[cfg(test)]
     pub(crate) async fn raw_digest(&self, run: RunId) -> Result<RawDigest, StoreError> {
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query(

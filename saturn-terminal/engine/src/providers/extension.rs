@@ -25,6 +25,7 @@ pub(crate) struct ExtensionLayout {
 
 impl ExtensionLayout {
     /// 확장을 주입하지 않는 어댑터.
+    #[cfg(test)]
     pub(crate) const NONE: Self = Self {
         skills_dir: None,
         commands: None,

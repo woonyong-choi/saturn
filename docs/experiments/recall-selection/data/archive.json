@@ -1,0 +1,8 @@
+{
+  "path": ".local/archives/recall-selection-20261007T192206Z.tar.gz",
+  "sha256": "0eba0e821ec763b79ed88d7590beb3f950f8fce7bc07baa040f8fe72d635c4df",
+  "files": 7685,
+  "manifest_sha256": "18426391fb5c7bad95d352b72e69d84e731203df3fe3e3d4e7ad11115af2f19e",
+  "verified": true,
+  "baseline_binary": "baseline/engine-tests included for macOS arm64 replay"
+}

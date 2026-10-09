@@ -7,7 +7,7 @@ use sqlx::Row;
 use sqlx::sqlite::SqliteRow;
 
 use super::records::not_found;
-use super::{Store, StoreError, UsageRow, from_millis, from_sql_int, parse_enum, to_sql_int};
+use super::{Store, StoreError, UsageRow, from_sql_int, parse_enum, to_sql_int};
 
 /// 채팅의 마지막 활동 시각: 마지막 입력 접수, 입력이 없으면 만든 시각. `latest_chat_in`과 `list_chats`가 같은 기준을 쓴다.
 const LAST_ACTIVE: &str =
@@ -174,7 +174,7 @@ fn usage_row(row: &SqliteRow) -> Result<UsageRow, StoreError> {
         session: SessionId(from_sql_int(row.try_get("session_id")?)),
         provider: parse_enum(row.try_get("provider")?)?,
         report: serde_json::from_str(row.try_get("body")?)?,
-        at: from_millis(row.try_get("at")?),
+        #[cfg(test)]
         spans_turns: row.try_get("spans_turns")?,
     })
 }

@@ -56,6 +56,7 @@ pub(crate) struct NewJudgment {
 }
 
 /// `yes`가 거짓이면 미리보기만 한다.
+#[cfg(test)]
 #[derive(Debug, Clone)]
 pub(crate) struct JudgmentPruneRequest {
     /// `None`이면 전부.
@@ -135,6 +136,7 @@ impl Store {
     }
 
     /// `yes`가 거짓이면 지울 건수만 돌려준다. 채팅 삭제가 아니라 삭제 흔적은 남기지 않는다.
+    #[cfg(test)]
     pub(crate) async fn prune_judgments(
         &self,
         request: &JudgmentPruneRequest,

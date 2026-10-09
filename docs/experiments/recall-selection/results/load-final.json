@@ -1,0 +1,318 @@
+{
+  "groups": [
+    {
+      "arm": "baseline",
+      "multiplier": 1,
+      "source_rows": 59,
+      "runs": 3,
+      "successes": 3,
+      "median_s": 0.039251917000000025,
+      "min_s": 0.038731667000000025,
+      "max_s": 0.040706292000000005
+    },
+    {
+      "arm": "candidate",
+      "multiplier": 1,
+      "source_rows": 59,
+      "runs": 3,
+      "successes": 3,
+      "median_s": 0.07317779100000002,
+      "min_s": 0.071633542,
+      "max_s": 0.07681308300000003
+    },
+    {
+      "arm": "baseline",
+      "multiplier": 10,
+      "source_rows": 590,
+      "runs": 3,
+      "successes": 3,
+      "median_s": 0.286708333,
+      "min_s": 0.286642167,
+      "max_s": 0.29157333399999996
+    },
+    {
+      "arm": "candidate",
+      "multiplier": 10,
+      "source_rows": 590,
+      "runs": 3,
+      "successes": 3,
+      "median_s": 0.4530949579999999,
+      "min_s": 0.44363591700000016,
+      "max_s": 0.45722633300000004
+    },
+    {
+      "arm": "baseline",
+      "multiplier": 100,
+      "source_rows": 5900,
+      "runs": 3,
+      "successes": 3,
+      "median_s": 2.413776666000002,
+      "min_s": 2.387735084,
+      "max_s": 2.427377332999999
+    },
+    {
+      "arm": "candidate",
+      "multiplier": 100,
+      "source_rows": 5900,
+      "runs": 3,
+      "successes": 3,
+      "median_s": 4.070525125,
+      "min_s": 4.064807583,
+      "max_s": 4.124206874999999
+    }
+  ],
+  "records": [
+    {
+      "trial": "baseline-1-1",
+      "arm": "baseline",
+      "multiplier": 1,
+      "source_rows": 59,
+      "repeat": 1,
+      "elapsed_s": 0.040706292000000005,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/baseline/engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "candidate-1-1",
+      "arm": "candidate",
+      "multiplier": 1,
+      "source_rows": 59,
+      "repeat": 1,
+      "elapsed_s": 0.07317779100000002,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/final-engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "baseline-1-2",
+      "arm": "baseline",
+      "multiplier": 1,
+      "source_rows": 59,
+      "repeat": 2,
+      "elapsed_s": 0.039251917000000025,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/baseline/engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "candidate-1-2",
+      "arm": "candidate",
+      "multiplier": 1,
+      "source_rows": 59,
+      "repeat": 2,
+      "elapsed_s": 0.07681308300000003,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/final-engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "baseline-1-3",
+      "arm": "baseline",
+      "multiplier": 1,
+      "source_rows": 59,
+      "repeat": 3,
+      "elapsed_s": 0.038731667000000025,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/baseline/engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "candidate-1-3",
+      "arm": "candidate",
+      "multiplier": 1,
+      "source_rows": 59,
+      "repeat": 3,
+      "elapsed_s": 0.071633542,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/final-engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "baseline-10-1",
+      "arm": "baseline",
+      "multiplier": 10,
+      "source_rows": 590,
+      "repeat": 1,
+      "elapsed_s": 0.286642167,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/baseline/engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "candidate-10-1",
+      "arm": "candidate",
+      "multiplier": 10,
+      "source_rows": 590,
+      "repeat": 1,
+      "elapsed_s": 0.45722633300000004,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/final-engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "baseline-10-2",
+      "arm": "baseline",
+      "multiplier": 10,
+      "source_rows": 590,
+      "repeat": 2,
+      "elapsed_s": 0.286708333,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/baseline/engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "candidate-10-2",
+      "arm": "candidate",
+      "multiplier": 10,
+      "source_rows": 590,
+      "repeat": 2,
+      "elapsed_s": 0.44363591700000016,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/final-engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "baseline-10-3",
+      "arm": "baseline",
+      "multiplier": 10,
+      "source_rows": 590,
+      "repeat": 3,
+      "elapsed_s": 0.29157333399999996,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/baseline/engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "candidate-10-3",
+      "arm": "candidate",
+      "multiplier": 10,
+      "source_rows": 590,
+      "repeat": 3,
+      "elapsed_s": 0.4530949579999999,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/final-engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "baseline-100-1",
+      "arm": "baseline",
+      "multiplier": 100,
+      "source_rows": 5900,
+      "repeat": 1,
+      "elapsed_s": 2.387735084,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/baseline/engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "candidate-100-1",
+      "arm": "candidate",
+      "multiplier": 100,
+      "source_rows": 5900,
+      "repeat": 1,
+      "elapsed_s": 4.064807583,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/final-engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "baseline-100-2",
+      "arm": "baseline",
+      "multiplier": 100,
+      "source_rows": 5900,
+      "repeat": 2,
+      "elapsed_s": 2.427377332999999,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/baseline/engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "candidate-100-2",
+      "arm": "candidate",
+      "multiplier": 100,
+      "source_rows": 5900,
+      "repeat": 2,
+      "elapsed_s": 4.070525125,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/final-engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "baseline-100-3",
+      "arm": "baseline",
+      "multiplier": 100,
+      "source_rows": 5900,
+      "repeat": 3,
+      "elapsed_s": 2.413776666000002,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/baseline/engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    },
+    {
+      "trial": "candidate-100-3",
+      "arm": "candidate",
+      "multiplier": 100,
+      "source_rows": 5900,
+      "repeat": 3,
+      "elapsed_s": 4.124206874999999,
+      "exit_code": 0,
+      "command": [
+        "/Users/woonyong/workspace/oss/saturn/.local/experiments/recall-selection/final-engine-tests",
+        "export_recalled_evidence",
+        "--ignored"
+      ]
+    }
+  ]
+}

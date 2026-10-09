@@ -1,0 +1,1727 @@
+{
+  "scenarios": 48,
+  "questions_per_condition": 480,
+  "correct": {
+    "saturn-packet": 347,
+    "fast-jev": 96
+  },
+  "accuracy": {
+    "saturn-packet": 0.7229166666666667,
+    "fast-jev": 0.2
+  },
+  "difference": 0.5229166666666667,
+  "difference_ci95": [
+    0.4625,
+    0.5833333333333334
+  ],
+  "discordant": {
+    "packet_only": 251,
+    "fast_only": 0
+  },
+  "by_type": {
+    "abstain": {
+      "saturn-packet": {
+        "correct": 96,
+        "total": 96
+      },
+      "fast-jev": {
+        "correct": 96,
+        "total": 96
+      }
+    },
+    "extract": {
+      "saturn-packet": {
+        "correct": 72,
+        "total": 96
+      },
+      "fast-jev": {
+        "correct": 0,
+        "total": 96
+      }
+    },
+    "multi-session": {
+      "saturn-packet": {
+        "correct": 76,
+        "total": 96
+      },
+      "fast-jev": {
+        "correct": 0,
+        "total": 96
+      }
+    },
+    "temporal": {
+      "saturn-packet": {
+        "correct": 42,
+        "total": 96
+      },
+      "fast-jev": {
+        "correct": 0,
+        "total": 96
+      }
+    },
+    "update": {
+      "saturn-packet": {
+        "correct": 61,
+        "total": 96
+      },
+      "fast-jev": {
+        "correct": 0,
+        "total": 96
+      }
+    }
+  },
+  "compaction": {
+    "calls_dropped": 6046,
+    "results_dropped": 2,
+    "calls_kept": 0,
+    "pinned": 96
+  },
+  "context_chars_median": {
+    "saturn-packet": 31981.5,
+    "fast-jev": 7412.0
+  },
+  "claude_elapsed_s_total": {
+    "saturn-packet": 324.258,
+    "fast-jev": 245.319
+  },
+  "jev_usage_total": {
+    "requests": 48,
+    "input_tokens": 1219866,
+    "output_tokens": 231744
+  },
+  "errors": [],
+  "sessions": [
+    {
+      "scenario_id": "s01",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 294563,
+        "charsAfter": 7796,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13918,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 558
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25418,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31980,
+        "elapsed_s": 8.615,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8783,
+        "elapsed_s": 5.744,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s02",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 291612,
+        "charsAfter": 5024,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13958,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 646
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25421,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31987,
+        "elapsed_s": 5.752,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 6011,
+        "elapsed_s": 4.198,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s03",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 270193,
+        "charsAfter": 5718,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13951,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 552
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25431,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31975,
+        "elapsed_s": 5.166,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 6705,
+        "elapsed_s": 4.21,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s04",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 281284,
+        "charsAfter": 4980,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13945,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 518
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25420,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31988,
+        "elapsed_s": 6.998,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 5967,
+        "elapsed_s": 6.37,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s05",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 274466,
+        "charsAfter": 6020,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13931,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 462
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25420,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 32000,
+        "elapsed_s": 8.686,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7007,
+        "elapsed_s": 5.303,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s06",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 275718,
+        "charsAfter": 6849,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13920,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 1518
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25366,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31993,
+        "elapsed_s": 12.211,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7836,
+        "elapsed_s": 5.076,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s07",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 290847,
+        "charsAfter": 7321,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13919,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 528
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25431,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31975,
+        "elapsed_s": 4.769,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8309,
+        "elapsed_s": 5.993,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s08",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 264721,
+        "charsAfter": 6435,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13953,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 472
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25436,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31990,
+        "elapsed_s": 5.989,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7422,
+        "elapsed_s": 5.078,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s09",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 296930,
+        "charsAfter": 7105,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13979,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 685
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25484,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31984,
+        "elapsed_s": 7.666,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8093,
+        "elapsed_s": 4.803,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s10",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 294920,
+        "charsAfter": 5468,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13957,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 500
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25438,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31991,
+        "elapsed_s": 7.662,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 6457,
+        "elapsed_s": 4.334,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s11",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 280059,
+        "charsAfter": 3507,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13912,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 434
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25384,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31990,
+        "elapsed_s": 6.24,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 4494,
+        "elapsed_s": 4.77,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s12",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 290672,
+        "charsAfter": 6136,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13928,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 468
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25385,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 32000,
+        "elapsed_s": 6.644,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7123,
+        "elapsed_s": 5.76,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s13",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 273828,
+        "charsAfter": 5418,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13919,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 500
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25417,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31977,
+        "elapsed_s": 6.074,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 6405,
+        "elapsed_s": 6.034,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s14",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 280587,
+        "charsAfter": 7959,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13947,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 574
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25421,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31980,
+        "elapsed_s": 6.207,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8946,
+        "elapsed_s": 4.783,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s15",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 265213,
+        "charsAfter": 4845,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13953,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 539
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25438,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31969,
+        "elapsed_s": 7.596,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 5833,
+        "elapsed_s": 5.221,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s16",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 279789,
+        "charsAfter": 3555,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13930,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 453
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25399,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31975,
+        "elapsed_s": 8.452,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 4542,
+        "elapsed_s": 7.108,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s17",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 264743,
+        "charsAfter": 6376,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13914,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 481
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25366,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31982,
+        "elapsed_s": 8.25,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7364,
+        "elapsed_s": 5.914,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s18",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 283723,
+        "charsAfter": 7674,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13938,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 644
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25404,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31995,
+        "elapsed_s": 7.976,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8662,
+        "elapsed_s": 4.923,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s19",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 293064,
+        "charsAfter": 6415,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13919,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 417
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25417,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31973,
+        "elapsed_s": 5.882,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7402,
+        "elapsed_s": 5.569,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s20",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 267185,
+        "charsAfter": 5196,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13953,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 418
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25394,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31998,
+        "elapsed_s": 6.128,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 6185,
+        "elapsed_s": 7.125,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s21",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 267188,
+        "charsAfter": 4426,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13950,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 494
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25435,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31995,
+        "elapsed_s": 6.161,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 5414,
+        "elapsed_s": 4.371,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s22",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 266877,
+        "charsAfter": 6636,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13937,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 517
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25411,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31980,
+        "elapsed_s": 6.443,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7624,
+        "elapsed_s": 4.639,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s23",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 289562,
+        "charsAfter": 4128,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13918,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 582
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25391,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31974,
+        "elapsed_s": 4.305,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 5116,
+        "elapsed_s": 4.079,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s24",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 276748,
+        "charsAfter": 6758,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13916,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 535
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25382,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 32000,
+        "elapsed_s": 7.154,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7745,
+        "elapsed_s": 4.202,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s25",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 275641,
+        "charsAfter": 8970,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13929,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 440
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25424,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31981,
+        "elapsed_s": 6.736,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 9957,
+        "elapsed_s": 5.619,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s26",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 274722,
+        "charsAfter": 7120,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13929,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 1436
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25388,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31988,
+        "elapsed_s": 7.451,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8107,
+        "elapsed_s": 4.263,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s27",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 272465,
+        "charsAfter": 9757,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13952,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 527
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25428,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31981,
+        "elapsed_s": 5.665,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 10744,
+        "elapsed_s": 4.238,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s28",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 288811,
+        "charsAfter": 6171,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13946,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 544
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25420,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31966,
+        "elapsed_s": 6.772,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7158,
+        "elapsed_s": 4.863,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s29",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 283430,
+        "charsAfter": 4846,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13921,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 486
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25412,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31973,
+        "elapsed_s": 7.522,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 5834,
+        "elapsed_s": 5.161,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s30",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 281900,
+        "charsAfter": 7212,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13906,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 485
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25375,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31993,
+        "elapsed_s": 6.746,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8200,
+        "elapsed_s": 4.791,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s31",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 71,
+        "charsBefore": 283150,
+        "charsAfter": 7849,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 1,
+        "callsDropped": 125,
+        "pinned": 2,
+        "stateTokens": 13932,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 433
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25433,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31997,
+        "elapsed_s": 6.981,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8897,
+        "elapsed_s": 6.889,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s32",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 275990,
+        "charsAfter": 3809,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13946,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 431
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25404,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31971,
+        "elapsed_s": 6.56,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 4797,
+        "elapsed_s": 4.482,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s33",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 295855,
+        "charsAfter": 7112,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13980,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 529
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25468,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31993,
+        "elapsed_s": 6.414,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8100,
+        "elapsed_s": 4.307,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s34",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 309756,
+        "charsAfter": 8247,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13947,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 955
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25435,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31990,
+        "elapsed_s": 5.689,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 9234,
+        "elapsed_s": 4.258,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s35",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 265684,
+        "charsAfter": 6112,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13920,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 421
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25374,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31978,
+        "elapsed_s": 6.019,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7100,
+        "elapsed_s": 4.338,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s36",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 269691,
+        "charsAfter": 6824,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13925,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 442
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25374,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31966,
+        "elapsed_s": 4.681,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7812,
+        "elapsed_s": 5.589,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s37",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 266936,
+        "charsAfter": 6246,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13920,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 411
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25416,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31969,
+        "elapsed_s": 7.577,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 7235,
+        "elapsed_s": 5.513,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s38",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 71,
+        "charsBefore": 268690,
+        "charsAfter": 8432,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 1,
+        "callsDropped": 125,
+        "pinned": 2,
+        "stateTokens": 13973,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 699
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25421,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31987,
+        "elapsed_s": 7.545,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 9481,
+        "elapsed_s": 5.364,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s39",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 274017,
+        "charsAfter": 5285,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13964,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 595
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25438,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31977,
+        "elapsed_s": 5.344,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 6273,
+        "elapsed_s": 5.9,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s40",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 289558,
+        "charsAfter": 4590,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13951,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 401
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25442,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31975,
+        "elapsed_s": 8.286,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 5577,
+        "elapsed_s": 4.612,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s41",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 282549,
+        "charsAfter": 7986,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13927,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 521
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25389,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31989,
+        "elapsed_s": 4.856,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8974,
+        "elapsed_s": 5.244,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s42",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 274303,
+        "charsAfter": 5149,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13932,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 413
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25391,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 32000,
+        "elapsed_s": 7.39,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 6137,
+        "elapsed_s": 4.245,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s43",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 277402,
+        "charsAfter": 7890,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13923,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 420
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25435,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31980,
+        "elapsed_s": 6.343,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8877,
+        "elapsed_s": 5.022,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s44",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 265226,
+        "charsAfter": 8655,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13952,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 511
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25406,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31999,
+        "elapsed_s": 6.007,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 9642,
+        "elapsed_s": 4.215,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s45",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 272433,
+        "charsAfter": 8766,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13977,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 436
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25470,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31991,
+        "elapsed_s": 7.361,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 9753,
+        "elapsed_s": 4.502,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s46",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 284584,
+        "charsAfter": 9294,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13948,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 733
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25423,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31974,
+        "elapsed_s": 7.315,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 10283,
+        "elapsed_s": 6.842,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s47",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 279290,
+        "charsAfter": 4609,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13926,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 635
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25398,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31968,
+        "elapsed_s": 6.051,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 5596,
+        "elapsed_s": 4.693,
+        "answered": 10
+      }
+    },
+    {
+      "scenario_id": "s48",
+      "compaction": {
+        "messagesBefore": 321,
+        "messagesAfter": 69,
+        "charsBefore": 282666,
+        "charsAfter": 7052,
+        "calls": 128,
+        "kept": 0,
+        "resultsDropped": 0,
+        "callsDropped": 126,
+        "pinned": 2,
+        "stateTokens": 13931,
+        "stateStage": "full",
+        "requests": 1,
+        "ms": 655
+      },
+      "jev_usage": {
+        "requests": 1,
+        "input_tokens": 25393,
+        "output_tokens": 4828
+      },
+      "error": null,
+      "saturn-packet": {
+        "context_chars": 31973,
+        "elapsed_s": 5.921,
+        "answered": 10
+      },
+      "fast-jev": {
+        "context_chars": 8039,
+        "elapsed_s": 4.762,
+        "answered": 10
+      }
+    }
+  ]
+}

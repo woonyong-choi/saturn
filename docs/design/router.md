@@ -313,6 +313,8 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 - router 벤더의 형식과 이름을 그대로 쓰는 방식은 router를 바꿀 때 스키마와 코드를 고쳐야 해 버렸다([판단 규격은 Saturn이 정하고 router는 중립 이름과 출처로 기록한다](../decisions/2026-09-29-vendor-neutral-router-spec.md)).
 - Saturn 모델을 API 서버로 두고 서버가 판단 기록을 모으는 방식은 호출마다 상태가 서버로 가서 버렸다([판단 기록은 로컬에 쌓고 동의한 레코드만 서버로 올린다](../decisions/2026-09-29-local-first-judgment-collection.md)).
 
+실행 설정의 `collect`는 구현된 router가 없어 받지 않는다. 이전 설정 스냅샷의 값은 보존하며 다른 방식으로 자동 전환하지 않는다. 로컬 서버 연결도 HTTPS 루프백만 허용하고 TLS 검증을 유지한다.
+
 ## 미해결 질문
 
 - 단계 선호와 코드 필터를 기준선으로 두고 Jev를 선택적으로 호출할 때 후속 품질과 총비용이 개선되는지 ([역할별 효율 예비 실험](../experiments/jev-role-efficiency/report.md), [다섯 확장 도구 비교](../experiments/jev-role-efficiency/stack-comparison.md), [#534](https://github.com/woonyong-choi/saturn/issues/534))

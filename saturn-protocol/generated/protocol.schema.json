@@ -1918,99 +1918,6 @@
           "type": "object"
         },
         {
-          "description": "채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 router 버전.",
-          "properties": {
-            "method": {
-              "const": "Train",
-              "type": "string"
-            },
-            "params": {
-              "properties": {
-                "from": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "reset_thresholds": {
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "reset_thresholds"
-              ],
-              "type": "object"
-            }
-          },
-          "required": [
-            "method",
-            "params"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "거짓이면 취소.",
-          "properties": {
-            "method": {
-              "const": "ConfirmTrain",
-              "type": "string"
-            },
-            "params": {
-              "properties": {
-                "proceed": {
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "proceed"
-              ],
-              "type": "object"
-            }
-          },
-          "required": [
-            "method",
-            "params"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "`QueryResult::RouterVersions`로 돌려준다.",
-          "properties": {
-            "method": {
-              "const": "ListRouterVersions",
-              "type": "string"
-            }
-          },
-          "required": [
-            "method"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "method": {
-              "const": "UseRouterVersion",
-              "type": "string"
-            },
-            "params": {
-              "properties": {
-                "version": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "version"
-              ],
-              "type": "object"
-            }
-          },
-          "required": [
-            "method",
-            "params"
-          ],
-          "type": "object"
-        },
-        {
           "description": "`retention.max_age_days`보다 오래 쓰지 않은 채팅을 정리한다. `yes`가 거짓이면 아무것도 지우지 않고\n`QueryResult::PrunePreview`로, 참이면 지우고 `QueryResult::Pruned`로 돌려준다. 설정이 없으면 거절한다.\n`plan`은 미리보기가 돌려준 번호다. `yes`가 참이고 `plan`이 있으면 그 미리보기에 있던 채팅만 지운다.\n모르거나 만료됐거나 이미 쓴 번호면 거절한다. `plan`이 없으면 `all`이 참일 때만 요청 순간의 기준으로 대상을 정해\n지우고, `all`도 없으면 아무것도 지우지 않고 거절한다. 미리보기 확인을 모르는 옛 클라이언트의 `yes`가 지금 대상\n전체의 삭제로 읽히지 않게 하기 위해서다.",
           "properties": {
             "method": {
@@ -3489,95 +3396,6 @@
         {
           "properties": {
             "method": {
-              "const": "TrainPreview",
-              "type": "string"
-            },
-            "params": {
-              "properties": {
-                "candidates": {
-                  "format": "uint32",
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "estimated_tokens": {
-                  "format": "uint64",
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "grader": {
-                  "type": "string"
-                },
-                "retrain_model": {
-                  "type": "boolean"
-                },
-                "threshold_targets": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                }
-              },
-              "required": [
-                "candidates",
-                "grader",
-                "estimated_tokens",
-                "threshold_targets",
-                "retrain_model"
-              ],
-              "type": "object"
-            }
-          },
-          "required": [
-            "method",
-            "params"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "method": {
-              "const": "TrainProgress",
-              "type": "string"
-            },
-            "params": {
-              "properties": {
-                "elapsed_ms": {
-                  "format": "uint64",
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "labeled": {
-                  "format": "uint32",
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "stage": {
-                  "type": "string"
-                },
-                "tokens": {
-                  "format": "uint64",
-                  "minimum": 0,
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "stage",
-                "labeled",
-                "elapsed_ms",
-                "tokens"
-              ],
-              "type": "object"
-            }
-          },
-          "required": [
-            "method",
-            "params"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "method": {
               "const": "TaskEvent",
               "type": "string"
             },
@@ -4540,95 +4358,6 @@
         {
           "properties": {
             "method": {
-              "const": "TrainPreview",
-              "type": "string"
-            },
-            "params": {
-              "properties": {
-                "candidates": {
-                  "format": "uint32",
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "estimated_tokens": {
-                  "format": "uint64",
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "grader": {
-                  "type": "string"
-                },
-                "retrain_model": {
-                  "type": "boolean"
-                },
-                "threshold_targets": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                }
-              },
-              "required": [
-                "candidates",
-                "grader",
-                "estimated_tokens",
-                "threshold_targets",
-                "retrain_model"
-              ],
-              "type": "object"
-            }
-          },
-          "required": [
-            "method",
-            "params"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "method": {
-              "const": "TrainProgress",
-              "type": "string"
-            },
-            "params": {
-              "properties": {
-                "elapsed_ms": {
-                  "format": "uint64",
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "labeled": {
-                  "format": "uint32",
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "stage": {
-                  "type": "string"
-                },
-                "tokens": {
-                  "format": "uint64",
-                  "minimum": 0,
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "stage",
-                "labeled",
-                "elapsed_ms",
-                "tokens"
-              ],
-              "type": "object"
-            }
-          },
-          "required": [
-            "method",
-            "params"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "method": {
               "const": "TaskEvent",
               "type": "string"
             },
@@ -5573,7 +5302,7 @@
       "type": "object"
     },
     "QueryResult": {
-      "description": "조회 요청의 답. 응답의 `result`에 실려 요청을 보낸 접속에만 간다. 명령 요청의 `result`는 `null`.\n요청과 답: `LoadHistory`→`History`, `Usage`→`Usage`, `ListTasks`→`Tasks`, `LatestChat`→`LatestChat`,\n`ListChats`→`Chats`, `ListModels`→`Models`, `ListRouterVersions`→`RouterVersions`,\n`PrepareExit`→`ExitPlan`, `Prune`→`PrunePreview`(`yes`가 거짓)나 `Pruned`(`yes`가 참).",
+      "description": "조회 요청의 답. 응답의 `result`에 실려 요청을 보낸 접속에만 간다. 명령 요청의 `result`는 `null`.\n요청과 답: `LoadHistory`→`History`, `Usage`→`Usage`, `ListTasks`→`Tasks`, `LatestChat`→`LatestChat`,\n`ListChats`→`Chats`, `ListModels`→`Models`,\n`PrepareExit`→`ExitPlan`, `Prune`→`PrunePreview`(`yes`가 거짓)나 `Pruned`(`yes`가 참).",
       "oneOf": [
         {
           "description": "항목은 실시간 알림과 같은 형식. `oldest`는 이 묶음에서 가장 오래된 기록 위치로, 더 앞을 받으려면\n`LoadHistory`의 `before`에 그대로 보낸다. 묶음이 비면 `None`.",
@@ -5755,37 +5484,6 @@
             },
             "kind": {
               "const": "Models",
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "data"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "data": {
-              "properties": {
-                "current": {
-                  "type": "string"
-                },
-                "versions": {
-                  "items": {
-                    "$ref": "#/$defs/RouterVersionInfo"
-                  },
-                  "type": "array"
-                }
-              },
-              "required": [
-                "current",
-                "versions"
-              ],
-              "type": "object"
-            },
-            "kind": {
-              "const": "RouterVersions",
               "type": "string"
             }
           },
@@ -6042,61 +5740,6 @@
       },
       "required": [
         "jsonrpc"
-      ],
-      "type": "object"
-    },
-    "RouterVersionInfo": {
-      "properties": {
-        "ece": {
-          "format": "double",
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "questions": {
-          "description": "(질문, 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수).",
-          "items": {
-            "maxItems": 5,
-            "minItems": 5,
-            "prefixItems": [
-              {
-                "type": "string"
-              },
-              {
-                "format": "double",
-                "type": "number"
-              },
-              {
-                "format": "double",
-                "type": "number"
-              },
-              {
-                "format": "uint32",
-                "minimum": 0,
-                "type": "integer"
-              },
-              {
-                "format": "uint32",
-                "minimum": 0,
-                "type": "integer"
-              }
-            ],
-            "type": "array"
-          },
-          "type": "array"
-        },
-        "router": {
-          "type": "string"
-        },
-        "version": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "version",
-        "router",
-        "questions"
       ],
       "type": "object"
     },

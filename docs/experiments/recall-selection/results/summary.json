@@ -1,0 +1,2992 @@
+{
+  "groups": [
+    {
+      "provider": "claude",
+      "subset": "all",
+      "arm": "full",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 104,
+      "questions": 104,
+      "input_tokens": 1071149,
+      "reduction_from_baseline": -0.8165104786712658,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "claude",
+      "subset": "all",
+      "arm": "baseline",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 99,
+      "questions": 104,
+      "input_tokens": 589674,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.4494939546225595
+    },
+    {
+      "provider": "claude",
+      "subset": "all",
+      "arm": "candidate",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 104,
+      "questions": 104,
+      "input_tokens": 583925,
+      "reduction_from_baseline": 0.009749454783490541,
+      "reduction_from_full": 0.45486108842000506
+    },
+    {
+      "provider": "claude",
+      "subset": "conversation",
+      "arm": "full",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 606226,
+      "reduction_from_baseline": -0.513249727916288,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "claude",
+      "subset": "conversation",
+      "arm": "baseline",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 400612,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.33917054035953587
+    },
+    {
+      "provider": "claude",
+      "subset": "conversation",
+      "arm": "candidate",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 395112,
+      "reduction_from_baseline": 0.01372899463820354,
+      "reduction_from_full": 0.3482430644677068
+    },
+    {
+      "provider": "claude",
+      "subset": "document",
+      "arm": "full",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 24,
+      "questions": 24,
+      "input_tokens": 464923,
+      "reduction_from_baseline": -1.4591033629179844,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "claude",
+      "subset": "document",
+      "arm": "baseline",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 19,
+      "questions": 24,
+      "input_tokens": 189062,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.5933477156432356
+    },
+    {
+      "provider": "claude",
+      "subset": "document",
+      "arm": "candidate",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 24,
+      "questions": 24,
+      "input_tokens": 188813,
+      "reduction_from_baseline": 0.0013170282764384256,
+      "reduction_from_full": 0.5938832882004117
+    },
+    {
+      "provider": "claude",
+      "subset": "single",
+      "arm": "full",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 4,
+      "questions": 4,
+      "input_tokens": 232253,
+      "reduction_from_baseline": -1.4651120828733974,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "claude",
+      "subset": "single",
+      "arm": "baseline",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 3,
+      "questions": 4,
+      "input_tokens": 94216,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.5943389321128252
+    },
+    {
+      "provider": "claude",
+      "subset": "single",
+      "arm": "candidate",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 4,
+      "questions": 4,
+      "input_tokens": 95188,
+      "reduction_from_baseline": -0.010316719028615084,
+      "reduction_from_full": 0.5901538408545852
+    },
+    {
+      "provider": "codex",
+      "subset": "all",
+      "arm": "full",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 104,
+      "questions": 104,
+      "input_tokens": 545835,
+      "reduction_from_baseline": -0.32085402328890433,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "codex",
+      "subset": "all",
+      "arm": "baseline",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 100,
+      "questions": 104,
+      "input_tokens": 413244,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.24291406743796207
+    },
+    {
+      "provider": "codex",
+      "subset": "all",
+      "arm": "candidate",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 104,
+      "questions": 104,
+      "input_tokens": 410060,
+      "reduction_from_baseline": 0.007704891057099483,
+      "reduction_from_full": 0.24874733206921507
+    },
+    {
+      "provider": "codex",
+      "subset": "conversation",
+      "arm": "full",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 308967,
+      "reduction_from_baseline": -0.21071420174455513,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "codex",
+      "subset": "conversation",
+      "arm": "baseline",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 255194,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.17404124065029603
+    },
+    {
+      "provider": "codex",
+      "subset": "conversation",
+      "arm": "candidate",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 252127,
+      "reduction_from_baseline": 0.012018307640461745,
+      "reduction_from_full": 0.1839678671184949
+    },
+    {
+      "provider": "codex",
+      "subset": "document",
+      "arm": "full",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 24,
+      "questions": 24,
+      "input_tokens": 236868,
+      "reduction_from_baseline": -0.49869028788358105,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "codex",
+      "subset": "document",
+      "arm": "baseline",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 20,
+      "questions": 24,
+      "input_tokens": 158050,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.33275073036459124
+    },
+    {
+      "provider": "codex",
+      "subset": "document",
+      "arm": "candidate",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 24,
+      "questions": 24,
+      "input_tokens": 157933,
+      "reduction_from_baseline": 0.0007402720658019613,
+      "reduction_from_full": 0.33324467635982913
+    },
+    {
+      "provider": "codex",
+      "subset": "single",
+      "arm": "full",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 4,
+      "questions": 4,
+      "input_tokens": 118272,
+      "reduction_from_baseline": -0.49910640725014255,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "codex",
+      "subset": "single",
+      "arm": "baseline",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 3,
+      "questions": 4,
+      "input_tokens": 78895,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.33293594426406925
+    },
+    {
+      "provider": "codex",
+      "subset": "single",
+      "arm": "candidate",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 4,
+      "questions": 4,
+      "input_tokens": 79431,
+      "reduction_from_baseline": -0.006793839913809441,
+      "reduction_from_full": 0.3284040178571429
+    }
+  ],
+  "repeated_groups": [
+    {
+      "provider": "claude",
+      "arm": "full",
+      "runs": 54,
+      "valid_runs": 54,
+      "correct": 311,
+      "questions": 312,
+      "known_correct": 260,
+      "known_questions": 261,
+      "input_tokens": 3214642,
+      "reduction_from_baseline": -0.8171161444584505,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "claude",
+      "arm": "baseline",
+      "runs": 54,
+      "valid_runs": 54,
+      "correct": 296,
+      "questions": 312,
+      "known_correct": 245,
+      "known_questions": 261,
+      "input_tokens": 1769090,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.44967744464235826
+    },
+    {
+      "provider": "claude",
+      "arm": "candidate",
+      "runs": 54,
+      "valid_runs": 54,
+      "correct": 310,
+      "questions": 312,
+      "known_correct": 259,
+      "known_questions": 261,
+      "input_tokens": 1751828,
+      "reduction_from_baseline": 0.009757558970996394,
+      "reduction_from_full": 0.45504724942932995
+    },
+    {
+      "provider": "codex",
+      "arm": "full",
+      "runs": 54,
+      "valid_runs": 54,
+      "correct": 312,
+      "questions": 312,
+      "known_correct": 261,
+      "known_questions": 261,
+      "input_tokens": 1637721,
+      "reduction_from_baseline": -0.3184874903491688,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "codex",
+      "arm": "baseline",
+      "runs": 54,
+      "valid_runs": 54,
+      "correct": 300,
+      "questions": 312,
+      "known_correct": 249,
+      "known_questions": 261,
+      "input_tokens": 1242121,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.2415551855291591
+    },
+    {
+      "provider": "codex",
+      "arm": "candidate",
+      "runs": 54,
+      "valid_runs": 54,
+      "correct": 312,
+      "questions": 312,
+      "known_correct": 261,
+      "known_questions": 261,
+      "input_tokens": 1230288,
+      "reduction_from_baseline": 0.009526447101369406,
+      "reduction_from_full": 0.24878046993352343
+    }
+  ],
+  "disagreements": [
+    {
+      "provider": "claude",
+      "trial": "document-permissions-single",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-batch",
+      "question": "direct",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-batch",
+      "question": "changes",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-batch",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-batch",
+      "question": "gitignore",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-8-r2",
+      "question": "new_path",
+      "reference_arm": "full",
+      "reference_correct": true,
+      "candidate_correct": false
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-8-r2",
+      "question": "new_path",
+      "reference_arm": "baseline",
+      "reference_correct": true,
+      "candidate_correct": false
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-batch-r3",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-batch-r3",
+      "question": "gitignore",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-batch-r2",
+      "question": "direct",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-batch-r2",
+      "question": "changes",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-16-r3",
+      "question": "prompt",
+      "reference_arm": "full",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-16-r3",
+      "question": "new_path",
+      "reference_arm": "full",
+      "reference_correct": true,
+      "candidate_correct": false
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-16-r3",
+      "question": "new_path",
+      "reference_arm": "baseline",
+      "reference_correct": true,
+      "candidate_correct": false
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-16-r2",
+      "question": "new_path",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-single-r3",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-batch-r3",
+      "question": "direct",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-batch-r3",
+      "question": "changes",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-batch-r2",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-batch-r2",
+      "question": "gitignore",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-single-r2",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-single",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-batch",
+      "question": "direct",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-batch",
+      "question": "changes",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-batch",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-batch-r3",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-batch-r2",
+      "question": "direct",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-batch-r2",
+      "question": "changes",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-single-r3",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-batch-r3",
+      "question": "direct",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-batch-r3",
+      "question": "changes",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-batch-r2",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-single-r2",
+      "question": "gitconfig",
+      "reference_arm": "baseline",
+      "reference_correct": false,
+      "candidate_correct": true
+    }
+  ],
+  "load_results": {
+    "load": [
+      {
+        "arm": "baseline",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.03861333400000011,
+        "min_s": 0.038311917,
+        "max_s": 0.03865895800000008
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.23319595800000004,
+        "min_s": 0.22394066699999993,
+        "max_s": 1.245792292
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.2862216250000005,
+        "min_s": 0.28305512499999974,
+        "max_s": 0.29310379200000014
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 2.1199182919999995,
+        "min_s": 2.1160611250000003,
+        "max_s": 2.1578698339999995
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 2.510101208000002,
+        "min_s": 2.438203667,
+        "max_s": 2.598618834
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 21.613005417000004,
+        "min_s": 21.318731292000002,
+        "max_s": 21.638911167000003
+      }
+    ],
+    "load-index": [
+      {
+        "arm": "baseline",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.03792141700000001,
+        "min_s": 0.03645145900000002,
+        "max_s": 0.038527624999999996
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.23562229099999998,
+        "min_s": 0.22858912499999995,
+        "max_s": 0.23946750000000006
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.2831407500000003,
+        "min_s": 0.2807724589999999,
+        "max_s": 0.28350829200000005
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 2.112220917,
+        "min_s": 2.107063458,
+        "max_s": 2.1558447089999992
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 2.4890615420000017,
+        "min_s": 2.4887001669999993,
+        "max_s": 2.4899130000000014
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 21.392332666999998,
+        "min_s": 21.337784292000002,
+        "max_s": 21.466718416
+      }
+    ],
+    "load-index-verified": [
+      {
+        "arm": "baseline",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.037745166999999996,
+        "min_s": 0.037087333,
+        "max_s": 0.04041091699999999
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.075700667,
+        "min_s": 0.07333833299999998,
+        "max_s": 0.07736933400000001
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.28864566699999994,
+        "min_s": 0.2807300829999999,
+        "max_s": 0.293642292
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.668343584,
+        "min_s": 0.661602791,
+        "max_s": 0.7222584579999998
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 2.4833052089999996,
+        "min_s": 2.475390708999999,
+        "max_s": 2.4906715419999976
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 6.310215041999999,
+        "min_s": 6.304778916,
+        "max_s": 6.360734957999998
+      }
+    ],
+    "load-postings": [
+      {
+        "arm": "baseline",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.03820849999999998,
+        "min_s": 0.03712266600000001,
+        "max_s": 0.03922324999999999
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.07421250000000001,
+        "min_s": 0.070594042,
+        "max_s": 0.07472804199999997
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.28397208399999996,
+        "min_s": 0.28268683400000016,
+        "max_s": 0.284796917
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.5444932499999999,
+        "min_s": 0.5043477909999999,
+        "max_s": 0.5585144169999998
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 2.4683790839999986,
+        "min_s": 2.4238474579999996,
+        "max_s": 2.483372749999999
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 5.094907290999998,
+        "min_s": 5.051860542,
+        "max_s": 5.138872458000002
+      }
+    ],
+    "load-final": [
+      {
+        "arm": "baseline",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.039251917000000025,
+        "min_s": 0.038731667000000025,
+        "max_s": 0.040706292000000005
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.07317779100000002,
+        "min_s": 0.071633542,
+        "max_s": 0.07681308300000003
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.286708333,
+        "min_s": 0.286642167,
+        "max_s": 0.29157333399999996
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.4530949579999999,
+        "min_s": 0.44363591700000016,
+        "max_s": 0.45722633300000004
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 2.413776666000002,
+        "min_s": 2.387735084,
+        "max_s": 2.427377332999999
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 4.070525125,
+        "min_s": 4.064807583,
+        "max_s": 4.124206874999999
+      }
+    ],
+    "load-release": [
+      {
+        "arm": "baseline",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.009896749999999996,
+        "min_s": 0.009882957999999997,
+        "max_s": 0.010227291999999999
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 1,
+        "source_rows": 59,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.0196075,
+        "min_s": 0.009818041999999999,
+        "max_s": 0.019866291999999994
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.037669334,
+        "min_s": 0.036842916,
+        "max_s": 0.03956162499999999
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 10,
+        "source_rows": 590,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.07045912500000001,
+        "min_s": 0.06988,
+        "max_s": 0.07074225
+      },
+      {
+        "arm": "baseline",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.287568166,
+        "min_s": 0.2848829580000003,
+        "max_s": 0.291818958
+      },
+      {
+        "arm": "candidate",
+        "multiplier": 100,
+        "source_rows": 5900,
+        "runs": 3,
+        "successes": 3,
+        "median_s": 0.5014613330000002,
+        "min_s": 0.5000638749999999,
+        "max_s": 0.5056324999999999
+      }
+    ]
+  },
+  "invalid_load_phase": {
+    "load-index": "candidate binary matched the pre-index binary; excluded from performance conclusions"
+  },
+  "regressions": [],
+  "combined": [
+    {
+      "provider": "claude",
+      "correct": 310,
+      "questions": 312,
+      "runs": 54,
+      "valid_runs": 54,
+      "failures": [
+        {
+          "case": "audit-8",
+          "trial": "audit-8-r2",
+          "question": "new_path",
+          "actual": "unknown"
+        },
+        {
+          "case": "audit-16",
+          "trial": "audit-16-r3",
+          "question": "new_path",
+          "actual": "unknown"
+        }
+      ]
+    },
+    {
+      "provider": "codex",
+      "correct": 312,
+      "questions": 312,
+      "runs": 54,
+      "valid_runs": 54,
+      "failures": []
+    }
+  ],
+  "paired": [
+    {
+      "provider": "claude",
+      "conditions": [
+        {
+          "case": "document-settings-batch",
+          "input_tokens": -798,
+          "correct": 0
+        },
+        {
+          "case": "audit-16",
+          "input_tokens": -539,
+          "correct": 0
+        },
+        {
+          "case": "audit-8",
+          "input_tokens": -446,
+          "correct": 0
+        },
+        {
+          "case": "design-chain",
+          "input_tokens": -260,
+          "correct": 0
+        },
+        {
+          "case": "document-settings-single",
+          "input_tokens": 559,
+          "correct": 0
+        },
+        {
+          "case": "learning-30",
+          "input_tokens": -1254,
+          "correct": 0
+        },
+        {
+          "case": "document-records-single",
+          "input_tokens": 116,
+          "correct": 0
+        },
+        {
+          "case": "document-permissions-single",
+          "input_tokens": 171,
+          "correct": 1
+        },
+        {
+          "case": "interruption",
+          "input_tokens": -876,
+          "correct": 0
+        },
+        {
+          "case": "document-records-batch",
+          "input_tokens": 275,
+          "correct": 2
+        },
+        {
+          "case": "learning-59",
+          "input_tokens": -524,
+          "correct": 0
+        },
+        {
+          "case": "document-router-key-security-batch",
+          "input_tokens": -374,
+          "correct": 0
+        },
+        {
+          "case": "notes",
+          "input_tokens": 57,
+          "correct": 0
+        },
+        {
+          "case": "audit-26",
+          "input_tokens": -817,
+          "correct": 0
+        },
+        {
+          "case": "learning-12",
+          "input_tokens": -785,
+          "correct": 0
+        },
+        {
+          "case": "relay",
+          "input_tokens": -56,
+          "correct": 0
+        },
+        {
+          "case": "document-permissions-batch",
+          "input_tokens": -324,
+          "correct": 2
+        },
+        {
+          "case": "document-router-key-security-single",
+          "input_tokens": 126,
+          "correct": 0
+        }
+      ],
+      "token_delta_sum": -5749,
+      "token_delta_min": -1254,
+      "token_delta_max": 559,
+      "token_delta_median": -349.0
+    },
+    {
+      "provider": "codex",
+      "conditions": [
+        {
+          "case": "document-settings-batch",
+          "input_tokens": -420,
+          "correct": 0
+        },
+        {
+          "case": "audit-16",
+          "input_tokens": -196,
+          "correct": 0
+        },
+        {
+          "case": "audit-8",
+          "input_tokens": -51,
+          "correct": 0
+        },
+        {
+          "case": "design-chain",
+          "input_tokens": -2325,
+          "correct": 0
+        },
+        {
+          "case": "document-settings-single",
+          "input_tokens": 310,
+          "correct": 0
+        },
+        {
+          "case": "learning-30",
+          "input_tokens": -779,
+          "correct": 0
+        },
+        {
+          "case": "document-records-single",
+          "input_tokens": 21,
+          "correct": 0
+        },
+        {
+          "case": "document-permissions-single",
+          "input_tokens": 133,
+          "correct": 1
+        },
+        {
+          "case": "interruption",
+          "input_tokens": -619,
+          "correct": 0
+        },
+        {
+          "case": "document-records-batch",
+          "input_tokens": 172,
+          "correct": 2
+        },
+        {
+          "case": "learning-59",
+          "input_tokens": -351,
+          "correct": 0
+        },
+        {
+          "case": "document-router-key-security-batch",
+          "input_tokens": -213,
+          "correct": 0
+        },
+        {
+          "case": "notes",
+          "input_tokens": 0,
+          "correct": 0
+        },
+        {
+          "case": "audit-26",
+          "input_tokens": -393,
+          "correct": 0
+        },
+        {
+          "case": "learning-12",
+          "input_tokens": -486,
+          "correct": 0
+        },
+        {
+          "case": "relay",
+          "input_tokens": 2133,
+          "correct": 0
+        },
+        {
+          "case": "document-permissions-batch",
+          "input_tokens": -192,
+          "correct": 1
+        },
+        {
+          "case": "document-router-key-security-single",
+          "input_tokens": 72,
+          "correct": 0
+        }
+      ],
+      "token_delta_sum": -3184,
+      "token_delta_min": -2325,
+      "token_delta_max": 2133,
+      "token_delta_median": -194.0
+    }
+  ],
+  "phases": {
+    "conservative": {
+      "prepared_conditions": 108,
+      "actual_calls": 0,
+      "status": {},
+      "reused_conditions": 108
+    },
+    "control-replication": {
+      "prepared_conditions": 144,
+      "actual_calls": 144,
+      "status": {
+        "ok": 144
+      },
+      "reused_conditions": 0
+    },
+    "coverage": {
+      "prepared_conditions": 108,
+      "actual_calls": 108,
+      "status": {
+        "ok": 108
+      },
+      "reused_conditions": 0
+    },
+    "explicit": {
+      "prepared_conditions": 108,
+      "actual_calls": 108,
+      "status": {
+        "ok": 108
+      },
+      "reused_conditions": 0
+    },
+    "focused": {
+      "prepared_conditions": 108,
+      "actual_calls": 28,
+      "status": {
+        "ok": 28
+      },
+      "reused_conditions": 80
+    },
+    "focused-prepare-failed": {
+      "prepared_conditions": 108,
+      "actual_calls": 0,
+      "status": {},
+      "reused_conditions": 0
+    },
+    "format": {
+      "prepared_conditions": 108,
+      "actual_calls": 36,
+      "status": {
+        "ok": 36
+      },
+      "reused_conditions": 72
+    },
+    "granularity": {
+      "prepared_conditions": 108,
+      "actual_calls": 0,
+      "status": {},
+      "reused_conditions": 0
+    },
+    "guarded": {
+      "prepared_conditions": 108,
+      "actual_calls": 0,
+      "status": {},
+      "reused_conditions": 94
+    },
+    "primary": {
+      "prepared_conditions": 108,
+      "actual_calls": 108,
+      "status": {
+        "ok": 108
+      },
+      "reused_conditions": 0
+    },
+    "replication": {
+      "prepared_conditions": 72,
+      "actual_calls": 72,
+      "status": {
+        "ok": 72
+      },
+      "reused_conditions": 0
+    }
+  },
+  "actual_calls": 604,
+  "actual_successful_calls": 604,
+  "earlier_groups": {
+    "primary": [
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "full",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 103,
+        "questions": 104,
+        "input_tokens": 1070023,
+        "reduction_from_baseline": -0.8163628709459483,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "baseline",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 102,
+        "questions": 104,
+        "input_tokens": 589102,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.44944921744672783
+      },
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "candidate",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 102,
+        "questions": 104,
+        "input_tokens": 584742,
+        "reduction_from_baseline": 0.007401095226293619,
+        "reduction_from_full": 0.45352389621531497
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "full",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 605508,
+        "reduction_from_baseline": -0.5145045346993291,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "baseline",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 399806,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3397180549224783
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "candidate",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 396103,
+        "reduction_from_baseline": 0.00926199206615208,
+        "reduction_from_full": 0.3458335810592098
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "full",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 23,
+        "questions": 24,
+        "input_tokens": 464515,
+        "reduction_from_baseline": -1.4539081649902799,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "baseline",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 22,
+        "questions": 24,
+        "input_tokens": 189296,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.5924867872942747
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "candidate",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 22,
+        "questions": 24,
+        "input_tokens": 188639,
+        "reduction_from_baseline": 0.003470754796720432,
+        "reduction_from_full": 0.593901165732
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "full",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 3,
+        "questions": 4,
+        "input_tokens": 232051,
+        "reduction_from_baseline": -1.4597568343951068,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "baseline",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 94339,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.5934557489517391
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "candidate",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 93687,
+        "reduction_from_baseline": 0.006911245614221073,
+        "reduction_from_full": 0.5962654761237831
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "full",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 547291,
+        "reduction_from_baseline": -0.3312098812277591,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "baseline",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 102,
+        "questions": 104,
+        "input_tokens": 411123,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.24880365290129014
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "candidate",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 102,
+        "questions": 104,
+        "input_tokens": 408463,
+        "reduction_from_baseline": 0.006470083162459894,
+        "reduction_from_full": 0.2536639557383549
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "full",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 308502,
+        "reduction_from_baseline": -0.22036915433119453,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "baseline",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 252794,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.18057581474350248
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "candidate",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 250427,
+        "reduction_from_baseline": 0.009363355142922747,
+        "reduction_from_full": 0.1882483744027591
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "full",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 238789,
+        "reduction_from_baseline": -0.5081823292005887,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "baseline",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 22,
+        "questions": 24,
+        "input_tokens": 158329,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3369501945231983
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "candidate",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 22,
+        "questions": 24,
+        "input_tokens": 158036,
+        "reduction_from_baseline": 0.0018505769631590452,
+        "reduction_from_full": 0.33817721921864075
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "full",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 120336,
+        "reduction_from_baseline": -0.5235104955308536,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "baseline",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 78986,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3436211939901609
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "candidate",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 78693,
+        "reduction_from_baseline": 0.00370951814245557,
+        "reduction_from_full": 0.34605604307937776
+      }
+    ],
+    "coverage": [
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "full",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 1070062,
+        "reduction_from_baseline": -0.8154244453945181,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "baseline",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 101,
+        "questions": 104,
+        "input_tokens": 589428,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.44916462784399414
+      },
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "candidate",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 103,
+        "questions": 104,
+        "input_tokens": 585460,
+        "reduction_from_baseline": 0.006731950297576672,
+        "reduction_from_full": 0.45287282419149544
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "full",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 605403,
+        "reduction_from_baseline": -0.5129703955095941,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "baseline",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 400142,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3390485346124813
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "candidate",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 396236,
+        "reduction_from_baseline": 0.009761534655197357,
+        "reduction_from_full": 0.34550043524726504
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "full",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 464659,
+        "reduction_from_baseline": -1.4547985587946282,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "baseline",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 21,
+        "questions": 24,
+        "input_tokens": 189286,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.5926345987057176
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "candidate",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 23,
+        "questions": 24,
+        "input_tokens": 189224,
+        "reduction_from_baseline": 0.0003275466754012468,
+        "reduction_from_full": 0.5927680298885849
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "full",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 232022,
+        "reduction_from_baseline": -1.461589059698484,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "baseline",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 3,
+        "questions": 4,
+        "input_tokens": 94257,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.5937583505012456
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "candidate",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 3,
+        "questions": 4,
+        "input_tokens": 94666,
+        "reduction_from_baseline": -0.004339200271597843,
+        "reduction_from_full": 0.5919955866254062
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "full",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 542945,
+        "reduction_from_baseline": -0.3136952692501258,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "baseline",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 102,
+        "questions": 104,
+        "input_tokens": 413296,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.2387884592362025
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "candidate",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 413427,
+        "reduction_from_baseline": -0.0003169641128875078,
+        "reduction_from_full": 0.23854718249546458
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "full",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 306329,
+        "reduction_from_baseline": -0.20144567728372698,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "baseline",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 254967,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.16766940119936413
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "candidate",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 255206,
+        "reduction_from_baseline": -0.0009373762094702087,
+        "reduction_from_full": 0.16688919429763427
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "full",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 236616,
+        "reduction_from_baseline": -0.49445774305402046,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "baseline",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 22,
+        "questions": 24,
+        "input_tokens": 158329,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.33086097305338613
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "candidate",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 158221,
+        "reduction_from_baseline": 0.0006821239318128836,
+        "reduction_from_full": 0.33131740879737637
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "full",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 118163,
+        "reduction_from_baseline": -0.4959992910135973,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "baseline",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 78986,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3315504853465129
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "candidate",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 79141,
+        "reduction_from_baseline": -0.0019623730787734495,
+        "reduction_from_full": 0.3302387380144377
+      }
+    ],
+    "focused": [
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "full",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 1070062,
+        "reduction_from_baseline": -0.8154244453945181,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "baseline",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 101,
+        "questions": 104,
+        "input_tokens": 589428,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.44916462784399414
+      },
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "candidate",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 102,
+        "questions": 104,
+        "input_tokens": 576120,
+        "reduction_from_baseline": 0.022577821209715188,
+        "reduction_from_full": 0.4616012903925193
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "full",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 605403,
+        "reduction_from_baseline": -0.5129703955095941,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "baseline",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 400142,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3390485346124813
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "candidate",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 394256,
+        "reduction_from_baseline": 0.014709778028799803,
+        "reduction_from_full": 0.3487709839561416
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "full",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 464659,
+        "reduction_from_baseline": -1.4547985587946282,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "baseline",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 21,
+        "questions": 24,
+        "input_tokens": 189286,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.5926345987057176
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "candidate",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 22,
+        "questions": 24,
+        "input_tokens": 181864,
+        "reduction_from_baseline": 0.039210506852065174,
+        "reduction_from_full": 0.6086076025644612
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "full",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 232022,
+        "reduction_from_baseline": -1.461589059698484,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "baseline",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 3,
+        "questions": 4,
+        "input_tokens": 94257,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.5937583505012456
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "candidate",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 2,
+        "questions": 4,
+        "input_tokens": 88571,
+        "reduction_from_baseline": 0.06032443213766614,
+        "reduction_from_full": 0.6182646473179267
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "full",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 542945,
+        "reduction_from_baseline": -0.3136952692501258,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "baseline",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 102,
+        "questions": 104,
+        "input_tokens": 413296,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.2387884592362025
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "candidate",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 102,
+        "questions": 104,
+        "input_tokens": 405355,
+        "reduction_from_baseline": 0.019213832217103488,
+        "reduction_from_full": 0.253414250062161
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "full",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 306329,
+        "reduction_from_baseline": -0.20144567728372698,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "baseline",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 254967,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.16766940119936413
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "candidate",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 251662,
+        "reduction_from_baseline": 0.012962461808783132,
+        "reduction_from_full": 0.1784584547985989
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "full",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 236616,
+        "reduction_from_baseline": -0.49445774305402046,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "baseline",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 22,
+        "questions": 24,
+        "input_tokens": 158329,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.33086097305338613
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "candidate",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 22,
+        "questions": 24,
+        "input_tokens": 153693,
+        "reduction_from_baseline": 0.02928080136930067,
+        "reduction_from_full": 0.350453899989857
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "full",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 118163,
+        "reduction_from_baseline": -0.4959992910135973,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "baseline",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 78986,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3315504853465129
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "candidate",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 2,
+        "questions": 4,
+        "input_tokens": 75334,
+        "reduction_from_baseline": 0.046236041830197805,
+        "reduction_from_full": 0.3624569450674069
+      }
+    ],
+    "conservative": [
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "full",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 1070062,
+        "reduction_from_baseline": -0.8154244453945181,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "baseline",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 101,
+        "questions": 104,
+        "input_tokens": 589428,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.44916462784399414
+      },
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "candidate",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 103,
+        "questions": 104,
+        "input_tokens": 582215,
+        "reduction_from_baseline": 0.012237287675509134,
+        "reduction_from_full": 0.4559053587549132
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "full",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 605403,
+        "reduction_from_baseline": -0.5129703955095941,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "baseline",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 400142,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3390485346124813
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "candidate",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 394256,
+        "reduction_from_baseline": 0.014709778028799803,
+        "reduction_from_full": 0.3487709839561416
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "full",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 464659,
+        "reduction_from_baseline": -1.4547985587946282,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "baseline",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 21,
+        "questions": 24,
+        "input_tokens": 189286,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.5926345987057176
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "candidate",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 23,
+        "questions": 24,
+        "input_tokens": 187959,
+        "reduction_from_baseline": 0.007010555455765344,
+        "reduction_from_full": 0.5954904564422512
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "full",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 232022,
+        "reduction_from_baseline": -1.461589059698484,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "baseline",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 3,
+        "questions": 4,
+        "input_tokens": 94257,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.5937583505012456
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "candidate",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 3,
+        "questions": 4,
+        "input_tokens": 94666,
+        "reduction_from_baseline": -0.004339200271597843,
+        "reduction_from_full": 0.5919955866254062
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "full",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 542945,
+        "reduction_from_baseline": -0.3136952692501258,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "baseline",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 102,
+        "questions": 104,
+        "input_tokens": 413296,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.2387884592362025
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "candidate",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 409162,
+        "reduction_from_baseline": 0.010002516356316105,
+        "reduction_from_full": 0.24640249012330895
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "full",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 306329,
+        "reduction_from_baseline": -0.20144567728372698,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "baseline",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 254967,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.16766940119936413
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "candidate",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 251662,
+        "reduction_from_baseline": 0.012962461808783132,
+        "reduction_from_full": 0.1784584547985989
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "full",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 236616,
+        "reduction_from_baseline": -0.49445774305402046,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "baseline",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 22,
+        "questions": 24,
+        "input_tokens": 158329,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.33086097305338613
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "candidate",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 157500,
+        "reduction_from_baseline": 0.005235932772896912,
+        "reduction_from_full": 0.33436454001420024
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "full",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 118163,
+        "reduction_from_baseline": -0.4959992910135973,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "baseline",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 78986,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3315504853465129
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "candidate",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 79141,
+        "reduction_from_baseline": -0.0019623730787734495,
+        "reduction_from_full": 0.3302387380144377
+      }
+    ],
+    "format": [
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "full",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 1070062,
+        "reduction_from_baseline": -0.8154244453945181,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "baseline",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 101,
+        "questions": 104,
+        "input_tokens": 589428,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.44916462784399414
+      },
+      {
+        "provider": "claude",
+        "subset": "all",
+        "arm": "candidate",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 103,
+        "questions": 104,
+        "input_tokens": 582809,
+        "reduction_from_baseline": 0.011229531002938442,
+        "reduction_from_full": 0.45535025073313506
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "full",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 605403,
+        "reduction_from_baseline": -0.5129703955095941,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "baseline",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 400142,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3390485346124813
+      },
+      {
+        "provider": "claude",
+        "subset": "conversation",
+        "arm": "candidate",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 394608,
+        "reduction_from_baseline": 0.013830090317937138,
+        "reduction_from_full": 0.34818955307456356
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "full",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 464659,
+        "reduction_from_baseline": -1.4547985587946282,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "baseline",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 21,
+        "questions": 24,
+        "input_tokens": 189286,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.5926345987057176
+      },
+      {
+        "provider": "claude",
+        "subset": "document",
+        "arm": "candidate",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 23,
+        "questions": 24,
+        "input_tokens": 188201,
+        "reduction_from_baseline": 0.005732066819521764,
+        "reduction_from_full": 0.5949696444058976
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "full",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 232022,
+        "reduction_from_baseline": -1.461589059698484,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "baseline",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 3,
+        "questions": 4,
+        "input_tokens": 94257,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.5937583505012456
+      },
+      {
+        "provider": "claude",
+        "subset": "single",
+        "arm": "candidate",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 3,
+        "questions": 4,
+        "input_tokens": 94747,
+        "reduction_from_baseline": -0.005198552892623276,
+        "reduction_from_full": 0.5916464817991398
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "full",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 542945,
+        "reduction_from_baseline": -0.3136952692501258,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "baseline",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 102,
+        "questions": 104,
+        "input_tokens": 413296,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.2387884592362025
+      },
+      {
+        "provider": "codex",
+        "subset": "all",
+        "arm": "candidate",
+        "runs": 18,
+        "valid_runs": 18,
+        "correct": 104,
+        "questions": 104,
+        "input_tokens": 411641,
+        "reduction_from_baseline": 0.004004393945259532,
+        "reduction_from_full": 0.24183665012109878
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "full",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 306329,
+        "reduction_from_baseline": -0.20144567728372698,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "baseline",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 254967,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.16766940119936413
+      },
+      {
+        "provider": "codex",
+        "subset": "conversation",
+        "arm": "candidate",
+        "runs": 10,
+        "valid_runs": 10,
+        "correct": 80,
+        "questions": 80,
+        "input_tokens": 251832,
+        "reduction_from_baseline": 0.012295708856440268,
+        "reduction_from_full": 0.17790349591452326
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "full",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 236616,
+        "reduction_from_baseline": -0.49445774305402046,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "baseline",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 22,
+        "questions": 24,
+        "input_tokens": 158329,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.33086097305338613
+      },
+      {
+        "provider": "codex",
+        "subset": "document",
+        "arm": "candidate",
+        "runs": 8,
+        "valid_runs": 8,
+        "correct": 24,
+        "questions": 24,
+        "input_tokens": 159809,
+        "reduction_from_baseline": -0.009347624250769071,
+        "reduction_from_full": 0.3246061128579639
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "full",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 118163,
+        "reduction_from_baseline": -0.4959992910135973,
+        "reduction_from_full": 0.0
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "baseline",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 78986,
+        "reduction_from_baseline": 0.0,
+        "reduction_from_full": 0.3315504853465129
+      },
+      {
+        "provider": "codex",
+        "subset": "single",
+        "arm": "candidate",
+        "runs": 4,
+        "valid_runs": 4,
+        "correct": 4,
+        "questions": 4,
+        "input_tokens": 81382,
+        "reduction_from_baseline": -0.030334489656394847,
+        "reduction_from_full": 0.3112734104584345
+      }
+    ]
+  },
+  "source_scope": {
+    "conversation_clusters": 6,
+    "conversation_conditions": 10,
+    "conversation_questions": 80,
+    "documents": 4,
+    "document_batch_questions": 20,
+    "repeated_single_questions": 4,
+    "conditions": 18,
+    "questions_per_provider": 104,
+    "known_questions": 87,
+    "unknown_questions": 17,
+    "unique_question_strings": 68
+  },
+  "implementation_tests": {
+    "passed": 1922,
+    "failed": 0,
+    "ignored": 5
+  },
+  "equivalence": {
+    "final-runtime-check": {
+      "document-router-key-security-batch.json": true,
+      "audit-16.json": true,
+      "document-records-batch.json": true,
+      "learning-30.json": true,
+      "document-records-single.json": true,
+      "relay.json": true,
+      "interruption.json": true,
+      "document-settings-single.json": true,
+      "audit-26.json": true,
+      "document-permissions-single.json": true,
+      "design-chain.json": true,
+      "document-permissions-batch.json": true,
+      "learning-59.json": true,
+      "notes.json": true,
+      "document-settings-batch.json": true,
+      "audit-8.json": true,
+      "document-router-key-security-single.json": true,
+      "learning-12.json": true
+    },
+    "final-packet-check": {
+      "document-records-batch-1000.json": true,
+      "audit-16-1000.json": true,
+      "audit-26-4000.json": true,
+      "design-chain-1000.json": true,
+      "document-records-batch-16000.json": true,
+      "document-settings-single-4000.json": true,
+      "learning-59-1000.json": true,
+      "document-permissions-batch-16000.json": true,
+      "document-router-key-security-batch-4000.json": true,
+      "audit-8-4000.json": true,
+      "audit-8-16000.json": true,
+      "learning-30-1000.json": true,
+      "notes-4000.json": true,
+      "document-router-key-security-single-1000.json": true,
+      "document-permissions-single-4000.json": true,
+      "document-settings-batch-1000.json": true,
+      "interruption-1000.json": true,
+      "document-permissions-single-16000.json": true,
+      "document-records-single-4000.json": true,
+      "learning-30-16000.json": true,
+      "relay-4000.json": true,
+      "document-settings-batch-16000.json": true,
+      "learning-12-4000.json": true,
+      "document-records-single-16000.json": true,
+      "design-chain-16000.json": true,
+      "document-permissions-batch-4000.json": true,
+      "document-permissions-batch-1000.json": true,
+      "learning-12-1000.json": true,
+      "document-records-single-1000.json": true,
+      "relay-1000.json": true,
+      "document-settings-single-16000.json": true,
+      "document-settings-batch-4000.json": true,
+      "interruption-4000.json": true,
+      "learning-59-16000.json": true,
+      "notes-1000.json": true,
+      "audit-16-16000.json": true,
+      "document-permissions-single-1000.json": true,
+      "document-router-key-security-single-4000.json": true,
+      "learning-30-4000.json": true,
+      "notes-16000.json": true,
+      "relay-16000.json": true,
+      "interruption-16000.json": true,
+      "audit-8-1000.json": true,
+      "audit-26-16000.json": true,
+      "document-router-key-security-batch-1000.json": true,
+      "learning-59-4000.json": true,
+      "document-router-key-security-batch-16000.json": true,
+      "audit-26-1000.json": true,
+      "design-chain-4000.json": true,
+      "learning-12-16000.json": true,
+      "document-settings-single-1000.json": true,
+      "document-records-batch-4000.json": true,
+      "audit-16-4000.json": true,
+      "document-router-key-security-single-16000.json": true
+    }
+  },
+  "release_equivalence": {
+    "release-runtime-check": {
+      "document-router-key-security-batch.json": true,
+      "audit-16.json": true,
+      "document-records-batch.json": true,
+      "learning-30.json": true,
+      "document-records-single.json": true,
+      "relay.json": true,
+      "interruption.json": true,
+      "document-settings-single.json": true,
+      "audit-26.json": true,
+      "document-permissions-single.json": true,
+      "design-chain.json": true,
+      "document-permissions-batch.json": true,
+      "learning-59.json": true,
+      "notes.json": true,
+      "document-settings-batch.json": true,
+      "audit-8.json": true,
+      "document-router-key-security-single.json": true,
+      "learning-12.json": true
+    },
+    "release-packet-check": {
+      "document-records-batch-1000.json": true,
+      "audit-16-1000.json": true,
+      "audit-26-4000.json": true,
+      "design-chain-1000.json": true,
+      "document-records-batch-16000.json": true,
+      "document-settings-single-4000.json": true,
+      "learning-59-1000.json": true,
+      "document-permissions-batch-16000.json": true,
+      "document-router-key-security-batch-4000.json": true,
+      "audit-8-4000.json": true,
+      "audit-8-16000.json": true,
+      "learning-30-1000.json": true,
+      "notes-4000.json": true,
+      "document-router-key-security-single-1000.json": true,
+      "document-permissions-single-4000.json": true,
+      "document-settings-batch-1000.json": true,
+      "interruption-1000.json": true,
+      "document-permissions-single-16000.json": true,
+      "document-records-single-4000.json": true,
+      "learning-30-16000.json": true,
+      "relay-4000.json": true,
+      "document-settings-batch-16000.json": true,
+      "learning-12-4000.json": true,
+      "document-records-single-16000.json": true,
+      "design-chain-16000.json": true,
+      "document-permissions-batch-4000.json": true,
+      "document-permissions-batch-1000.json": true,
+      "learning-12-1000.json": true,
+      "document-records-single-1000.json": true,
+      "relay-1000.json": true,
+      "document-settings-single-16000.json": true,
+      "document-settings-batch-4000.json": true,
+      "interruption-4000.json": true,
+      "learning-59-16000.json": true,
+      "notes-1000.json": true,
+      "audit-16-16000.json": true,
+      "document-permissions-single-1000.json": true,
+      "document-router-key-security-single-4000.json": true,
+      "learning-30-4000.json": true,
+      "notes-16000.json": true,
+      "relay-16000.json": true,
+      "interruption-16000.json": true,
+      "audit-8-1000.json": true,
+      "audit-26-16000.json": true,
+      "document-router-key-security-batch-1000.json": true,
+      "learning-59-4000.json": true,
+      "document-router-key-security-batch-16000.json": true,
+      "audit-26-1000.json": true,
+      "design-chain-4000.json": true,
+      "learning-12-16000.json": true,
+      "document-settings-single-1000.json": true,
+      "document-records-batch-4000.json": true,
+      "audit-16-4000.json": true,
+      "document-router-key-security-single-16000.json": true
+    },
+    "release-baseline-check": {
+      "document-router-key-security-batch.json": true,
+      "audit-16.json": true,
+      "document-records-batch.json": true,
+      "learning-30.json": true,
+      "document-records-single.json": true,
+      "relay.json": true,
+      "interruption.json": true,
+      "document-settings-single.json": true,
+      "audit-26.json": true,
+      "document-permissions-single.json": true,
+      "design-chain.json": true,
+      "document-permissions-batch.json": true,
+      "learning-59.json": true,
+      "notes.json": true,
+      "document-settings-batch.json": true,
+      "audit-8.json": true,
+      "document-router-key-security-single.json": true,
+      "learning-12.json": true
+    }
+  },
+  "acceptance": {
+    "accepted": false,
+    "reason": "two previously correct Claude answers regressed in repetition",
+    "state": "local candidate implementation; no release adoption"
+  },
+  "policy": {
+    "packet_limit": 4000,
+    "max_chars": 8000,
+    "pool_count": 2,
+    "plain_chunk_chars": 600,
+    "relative_score": 0.25,
+    "minimum_candidates": 2,
+    "candidates_per_question": 2,
+    "single_question_cap": null
+  }
+}

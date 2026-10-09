@@ -72,7 +72,10 @@ async fn send_numbers_requests_and_next_skips_responses() {
     let mut client = EngineClient::connect(&socket).await.unwrap();
 
     client.send(Request::ListTasks).await.unwrap();
-    client.send(Request::ListRouterVersions).await.unwrap();
+    client
+        .send(Request::ListChats { folder: None })
+        .await
+        .unwrap();
     let received = client.next().await;
 
     assert_eq!(received, Some(Incoming::Notification(notice())));

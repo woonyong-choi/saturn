@@ -11,7 +11,7 @@ const AT_MS: i64 = 1_789_207_200_000;
 
 // 지시문이 먹는 토큰. 지시문을 뺀 기록 예산이 T = 4_000일 때와 같도록 T에 더한다.
 fn instruction_tokens() -> u64 {
-    estimate_tokens(&format!("{INSTRUCTION}{ITEM_SEPARATOR}"))
+    estimate_tokens(&format!("{INSTRUCTION}{ITEM_SEPARATOR}{ARCHIVE_END}"))
 }
 
 // 기록 몫이 T = 4_000 → P_max = 400 토큰(1_600자), P_hard = 800 토큰(3_200자)일 때와 같다.
@@ -74,6 +74,8 @@ fn records(packet: &Packet) -> &str {
         .text
         .strip_prefix(&format!("{INSTRUCTION}{ITEM_SEPARATOR}"))
         .expect("packet should start with the instruction")
+        .strip_suffix(ARCHIVE_END)
+        .expect("packet should end with the archive boundary")
 }
 
 fn ready(outcome: PacketOutcome) -> Packet {
@@ -354,9 +356,9 @@ fn build_packet_large_record_stays_within_packet_limit() {
 fn build_packet_fixed_overflow_trims_oldest_answer_first() {
     let source = PacketSource {
         recent_turns: vec![
-            turn(1, "q1", &filler("a", 560)),
-            turn(2, "q2", &filler("b", 560)),
-            turn(3, "q3", &filler("c", 560)),
+            turn(1, "q1", &filler("a", 550)),
+            turn(2, "q2", &filler("b", 550)),
+            turn(3, "q3", &filler("c", 550)),
         ],
         ..PacketSource::default()
     };
@@ -365,8 +367,8 @@ fn build_packet_fixed_overflow_trims_oldest_answer_first() {
 
     assert!(packet.text.contains(&filler("a", 300)));
     assert!(!packet.text.contains(&filler("a", 301)));
-    assert!(packet.text.contains(&filler("b", 560)));
-    assert!(packet.text.contains(&filler("c", 560)));
+    assert!(packet.text.contains(&filler("b", 550)));
+    assert!(packet.text.contains(&filler("c", 550)));
     assert!(!packet.is_over_limit);
 }
 
@@ -611,6 +613,7 @@ fn build_packet_starts_with_the_do_not_act_instruction() {
     let packet = ready(build_packet(&source, &budget()));
 
     assert!(packet.text.starts_with(INSTRUCTION));
+    assert!(packet.text.ends_with(ARCHIVE_END));
     assert!(INSTRUCTION.contains("do not call tools and do not change files"));
     assert!(INSTRUCTION.contains("wait for the next user input"));
 }

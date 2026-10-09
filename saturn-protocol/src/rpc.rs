@@ -14,7 +14,7 @@ use crate::input::{InputAnswer, InputRequest};
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
 
 /// engine과 클라이언트가 주고받는 메시지 판. 요청이나 알림의 모양을 호환되지 않게 바꿀 때 올린다.
-pub const PROTOCOL_VERSION: u32 = 3;
+pub const PROTOCOL_VERSION: u32 = 4;
 
 /// engine이 에이전트 작업의 환경에 넣는 출입증 변수 이름. `saturn`이 이 값으로 `AttachChild`를 보낸다.
 pub const PASS_ENV: &str = "SATURN_PASS";
@@ -252,20 +252,6 @@ pub enum Request {
         chat: ChatId,
         provider: Option<Provider>,
     },
-    /// 채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 router 버전.
-    Train {
-        reset_thresholds: bool,
-        from: Option<String>,
-    },
-    /// 거짓이면 취소.
-    ConfirmTrain {
-        proceed: bool,
-    },
-    /// `QueryResult::RouterVersions`로 돌려준다.
-    ListRouterVersions,
-    UseRouterVersion {
-        version: String,
-    },
     /// `retention.max_age_days`보다 오래 쓰지 않은 채팅을 정리한다. `yes`가 거짓이면 아무것도 지우지 않고
     /// `QueryResult::PrunePreview`로, 참이면 지우고 `QueryResult::Pruned`로 돌려준다. 설정이 없으면 거절한다.
     /// `plan`은 미리보기가 돌려준 번호다. `yes`가 참이고 `plan`이 있으면 그 미리보기에 있던 채팅만 지운다.
@@ -441,19 +427,6 @@ pub enum Notification {
         name: Option<String>,
         group: Option<String>,
     },
-    TrainPreview {
-        candidates: u32,
-        grader: String,
-        estimated_tokens: u64,
-        threshold_targets: Vec<String>,
-        retrain_model: bool,
-    },
-    TrainProgress {
-        stage: String,
-        labeled: u32,
-        elapsed_ms: u64,
-        tokens: u64,
-    },
     TaskEvent {
         task: TaskId,
         event: ProviderEvent,
@@ -505,7 +478,7 @@ pub enum Notification {
 
 /// 조회 요청의 답. 응답의 `result`에 실려 요청을 보낸 접속에만 간다. 명령 요청의 `result`는 `null`.
 /// 요청과 답: `LoadHistory`→`History`, `Usage`→`Usage`, `ListTasks`→`Tasks`, `LatestChat`→`LatestChat`,
-/// `ListChats`→`Chats`, `ListModels`→`Models`, `ListRouterVersions`→`RouterVersions`,
+/// `ListChats`→`Chats`, `ListModels`→`Models`,
 /// `PrepareExit`→`ExitPlan`, `Prune`→`PrunePreview`(`yes`가 거짓)나 `Pruned`(`yes`가 참).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", content = "data")]
@@ -536,10 +509,6 @@ pub enum QueryResult {
     /// provider 순서와 provider가 알려 준 순서를 지킨다.
     Models {
         models: Vec<ModelInfo>,
-    },
-    RouterVersions {
-        current: String,
-        versions: Vec<RouterVersionInfo>,
     },
     /// 닫은 뒤의 처리.
     ExitPlan {
@@ -953,13 +922,4 @@ pub struct UsageRow {
     pub labels: Option<u32>,
     /// 여러 턴의 합계인 행만 턴 수를 채운다. 한 턴이면 `None`.
     pub turns: Option<u32>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
-pub struct RouterVersionInfo {
-    pub version: String,
-    pub router: String,
-    pub ece: Option<f64>,
-    /// (질문, 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수).
-    pub questions: Vec<(String, f64, f64, u32, u32)>,
 }

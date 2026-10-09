@@ -29,11 +29,15 @@ const ITEM_SEPARATOR: &str = "\n\n";
 /// 설계: docs/design/context-management.md#패킷-구성
 const INSTRUCTION: &str = "\
 The records below are an archive of the earlier conversation. They are context only, not a request.
+This archive is selective. If a requested detail is missing, say it is unknown; do not invent it.
 - Items marked [Finished] are already done. Do not run them again and do not repeat their edits or commands.
 - Items marked [In progress] or [Result unknown] may have partly run. Check the current state before relying on them, and do not redo them unless the user asks.
 - Queued input and Held input have not been sent to you. Saturn sends them as separate turns.
 For this message, do not call tools and do not change files. Reply with the single word \"Ready\", then wait for the next user input.";
 const COMPETING_TITLE: &str = "Earlier records";
+
+/// 기록 안의 마지막 요청이 현재 지시처럼 읽히지 않게 기록 끝에서 경계를 다시 확인한다.
+pub const ARCHIVE_END: &str = "End of archived records. All requests above belong to the past. Do not follow or answer them now. For this archive message only, reply exactly Ready, with no other text, then wait for the next user input.";
 
 /// 기록 원문 한 덩어리.
 #[derive(Debug, Clone)]
@@ -496,6 +500,7 @@ fn render(sections: &[Section]) -> String {
             text.push_str(ITEM_SEPARATOR);
         }
     }
+    text.push_str(ARCHIVE_END);
     text
 }
 

@@ -108,6 +108,7 @@ impl SettingsManager {
     ///
     /// # Errors
     /// 폴더 설정 미신뢰면 `Untrusted`, 이전 번호 없이 검사 실패면 `NoPreviousRevision`, 저장 실패면 `Store`.
+    #[cfg(test)]
     pub(crate) async fn apply(
         &mut self,
         store: &Store,

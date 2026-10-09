@@ -255,6 +255,7 @@ impl Store {
     ///
     /// # Errors
     /// 읽기 실패면 `Database`.
+    #[cfg(test)]
     pub(crate) async fn constraint_revision(&self, chat: ChatId) -> Result<u64, StoreError> {
         let revision: i64 = sqlx::query_scalar(
             "SELECT COALESCE(MAX(event_id), 0) FROM constraint_events WHERE chat_id = ?",

@@ -6,7 +6,7 @@ use std::io::Write;
 use clap::FromArgMatches;
 use saturn_tui::i18n::Lang;
 
-use crate::args::{Cli, Command, OpenMode, RouterCommand};
+use crate::args::{Cli, Command, OpenMode};
 use crate::exit::{Exit, ExitCode};
 
 mod args;
@@ -76,15 +76,6 @@ async fn run(lang: Lang, cli: Cli, mode: OpenMode) -> anyhow::Result<()> {
         }
         Some(Command::Prune(args)) => commands::prune::run(lang, &mut client, &args).await,
         Some(Command::Export(args)) => commands::export::run(lang, &mut client, &args).await,
-        Some(Command::Router {
-            command: RouterCommand::Train(args),
-        }) => commands::train::run(lang, &mut client, &args).await,
-        Some(Command::Router {
-            command: RouterCommand::Use(args),
-        }) => commands::router::use_version(lang, &mut client, &args).await,
-        Some(Command::Router {
-            command: RouterCommand::List,
-        }) => commands::router::list(lang, &mut client).await,
         Some(Command::Usage(args)) => commands::usage::run(lang, &mut client, &args).await,
     }
 }

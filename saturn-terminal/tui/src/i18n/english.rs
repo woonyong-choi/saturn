@@ -21,8 +21,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("실행 {n}", "Running {n}"),
     ("판단 {n}개 더", "{n} more judging"),
     ("판단 {n}", "Judging {n}"),
-    ("학습 {n}개 더", "{n} more training"),
-    ("학습 {n}", "Training {n}"),
     ("대기 {n}개 더", "{n} more queued"),
     ("대기 {n}", "Queued {n}"),
     ("보류 {n}개 더", "{n} more held"),
@@ -30,7 +28,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("알림 {n}개 더", "{n} more alerts"),
     ("알림 {n}", "Alerts {n}"),
     ("판단 중", "Judging"),
-    ("학습", "Training"),
     ("대기", "Queued"),
     ("다음", "after"),
     ("판단 차례", "Waiting for router turn"),
@@ -174,41 +171,9 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("보관한 session", "kept session"),
     ("TUI에 붙어 있음", "attached to a TUI"),
     (
-        "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})",
-        "Router version not found: {version} (available: {available})",
-    ),
-    (
-        "이미 쓰는 router 버전입니다: {version}",
-        "Already using router version: {version}",
-    ),
-    (
-        "다음 router 버전을 쓸까요? {version} (현재: {current})",
-        "Use router version {version} (current: {current})?",
-    ),
-    (
-        "확인하지 않았습니다 · router 버전은 {current} 그대로입니다",
-        "Not confirmed · Router version stays {current}",
-    ),
-    (
-        "router 버전을 바꿨습니다: {version}",
-        "Router version changed: {version}",
-    ),
-    (
-        "engine이 router 버전 목록 없이 답했습니다",
-        "Engine answered without router versions",
-    ),
-    (
         "engine이 사용량 표 없이 답했습니다",
         "Engine answered without a usage table",
     ),
-    ("학습 요청을 받았습니다", "Train request accepted"),
-    ("학습을 실행할까요?", "Run training?"),
-    (
-        "{stage} · 채점 {labeled}건 · {elapsed} · 토큰 {tokens}",
-        "{stage} · labeled {labeled} · {elapsed} · {tokens} tokens",
-    ),
-    ("학습을 마쳤습니다", "Training finished"),
-    ("학습을 취소했습니다", "Training cancelled"),
     (
         "이 폴더에 이어 열 채팅이 없습니다 · saturn으로 새 채팅을 시작하세요",
         "No chat to continue in this folder · Start a new chat with saturn",
@@ -307,10 +272,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Expected a chat id (number) or `all`: `{text}`",
     ),
     (
-        "router 버전은 `v3`처럼 v와 1 이상 정수여야 합니다: `{text}`",
-        "A router version is `v` and an integer of 1 or more, such as `v3`: `{text}`",
-    ),
-    (
         "KEY=VALUE 형식이어야 합니다: `{text}`",
         "Expected KEY=VALUE: `{text}`",
     ),
@@ -358,28 +319,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ),
     ("router 관리", "Manage the router"),
     (
-        "router 학습. 채점 안 된 판단이 200건 미만이면 engine이 거절한다",
-        "Train the router; the engine refuses when fewer than 200 judgments are graded",
-    ),
-    (
         "기준값을 1차 영점으로 되돌린다",
         "Reset thresholds to the first zero point",
     ),
-    (
-        "이 router 버전에서 다시 학습한다(`Request::Train`의 `from`)",
-        "Retrain from this router version",
-    ),
-    (
-        "확인 없이 학습을 시작한다",
-        "Start training without confirmation",
-    ),
-    (
-        "고른 router 버전을 확인 한 줄 뒤 현재 버전으로 쓴다",
-        "Use the chosen router version as the current one after a confirmation line",
-    ),
-    ("쓸 router 버전", "Router version to use"),
     ("확인 없이 바꾼다", "Switch without confirmation"),
-    ("router 버전 목록을 보인다", "List router versions"),
     ("사용량 조회", "Show usage"),
     (
         "모든 채팅의 최근 24시간 사용량을 본다",
@@ -434,8 +377,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("바로 새 작업으로 실행할까요?", "Run as a new task now?"),
     ("[실행]", "[run]"),
     ("[그대로]", "[keep]"),
-    ("채점할 판단", "Judgments to grade"),
-    ("쌓이면 실행할 수 있습니다", "needed to run"),
     ("붙여넣은 내용", "Pasted"),
     ("자", "chars"),
     ("건", ""),
@@ -445,7 +386,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("모두 이어서", "Continue all"),
     ("골라서 이어서", "Choose what to continue"),
     ("그대로 두기", "Leave as is"),
-    ("실행", "Run"),
     ("이번만 허용", "Allow once"),
     ("항상 허용", "Always allow"),
     ("거부", "Deny"),
@@ -616,27 +556,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("맥락 정리", "Compactions"),
     ("토큰", "tokens"),
     ("턴", "turns"),
-    ("라우터 버전", "Router versions"),
-    ("사용 중", "In use"),
-    ("질문", "Question"),
-    ("목표 틀림 비율", "Target error"),
-    ("기준값", "Threshold"),
-    ("최근 200건 틀림", "Errors in last 200"),
-    ("판단 수", "Judgments"),
-    (
-        "이 버전을 쓸까요? u 또는 Enter 확인 · Esc 취소",
-        "Use this version? u or Enter confirm · Esc cancel",
-    ),
-    (
-        "Enter 상세 · r 영점 복귀 · t 다시 학습 · u 사용 · Esc 닫기",
-        "Enter details · r reset · t retrain · u use · Esc close",
-    ),
-    ("판단 모델 학습", "Train router"),
-    ("채점 후보", "Candidates"),
-    ("채점 모델", "Grader"),
-    ("예상 토큰", "Estimated tokens"),
-    ("기준값 조정 대상", "Threshold targets"),
-    ("모델 추가 학습", "Retrain model"),
     ("모델 고르기", "Choose model"),
     ("기록 정리", "Prune records"),
     (

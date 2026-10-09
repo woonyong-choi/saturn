@@ -350,6 +350,7 @@ impl RpcServer {
     }
 
     /// 0이면 TUI 없음(background).
+    #[cfg(test)]
     pub(crate) fn client_count(&self) -> usize {
         self.clients.len()
     }

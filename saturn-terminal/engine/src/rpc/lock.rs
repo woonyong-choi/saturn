@@ -4,7 +4,9 @@
 use std::fs::{File, OpenOptions};
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::OpenOptionsExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(test)]
+use std::path::PathBuf;
 
 use super::RpcError;
 
@@ -14,6 +16,7 @@ pub(crate) const LOCK_FILE: &str = "engine.lock";
 /// `flock` 잠금이라 버리거나 프로세스가 죽으면 풀린다.
 #[derive(Debug)]
 pub(crate) struct EngineLock {
+    #[cfg(test)]
     path: PathBuf,
     // 잠금은 열린 파일에 묶여 있어 살아 있는 동안 들고 있어야 한다.
     #[allow(dead_code)]
@@ -50,9 +53,14 @@ impl EngineLock {
             }
             return Err(lock_error(error));
         }
-        Ok(Self { path, file })
+        Ok(Self {
+            #[cfg(test)]
+            path,
+            file,
+        })
     }
 
+    #[cfg(test)]
     pub(crate) fn path(&self) -> &Path {
         &self.path
     }

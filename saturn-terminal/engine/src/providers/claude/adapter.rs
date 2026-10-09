@@ -10,9 +10,9 @@ use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId};
 use super::{ClaudeClient, direct, extensions};
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::{
-    Adapter, AdapterConnection, AppliedReader, AppliedSettings, BoxFuture, ContextDefaults,
-    Descriptor, DirectInstall, ExtensionLayout, Feature, INTERFACE_VERSION, LaunchSpec,
-    PermissionInput, PermissionLaunch, ProviderConnection,
+    Adapter, AdapterConnection, BoxFuture, ContextDefaults, Descriptor, DirectInstall,
+    ExtensionLayout, Feature, INTERFACE_VERSION, LaunchSpec, PermissionInput, PermissionLaunch,
+    ProviderConnection,
 };
 
 /// 설정 키 `provider.claude.*`와 모델 고정 글 `claude/<model>`의 앞부분이다.
@@ -93,14 +93,6 @@ impl Adapter for ClaudeAdapter {
 impl AdapterConnection for ClaudeClient {
     fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId> {
         ClaudeClient::process_group(self, session)
-    }
-
-    fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
-        ClaudeClient::applied_settings(self, session)
-    }
-
-    fn applied_reader(&self, session: &ProviderSessionId) -> Option<AppliedReader> {
-        ClaudeClient::applied_reader(self, session)
     }
 
     fn start_queued_turn(&mut self, agent: AgentId) -> impl Future<Output = ()> + Send {

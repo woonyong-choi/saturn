@@ -176,14 +176,6 @@ pub(crate) struct TaskUpdate {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TrainingProgress {
-    pub stage: String,
-    pub graded: u32,
-    pub elapsed: Duration,
-    pub tokens: u64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StopResult {
     pub held: Vec<TaskLabel>,
     /// 멈춤 뒤 provider 프로세스 묶음 밖에 남은 프로세스 수.
@@ -256,7 +248,6 @@ pub(crate) struct ChatState {
     pub judging_tails: Vec<JudgingTail>,
     /// 같은 값은 한 번만.
     pub alerts: Vec<Alert>,
-    pub training: Option<TrainingProgress>,
     /// 보류 줄이 모두 사라지면 지운다.
     pub stop: Option<StopResult>,
     pub close_held_confirm: Option<TaskId>,
@@ -283,7 +274,6 @@ impl ChatState {
     // cost: time O(log i + h), heap O(n), stack O(1)
     // vars: i = 입력 수, h = 보류 줄 수, n = 원문 길이
     // basis: estimate
-    /// TODO(#60): provider가 끼워 넣기를 거절한 입력(`Rejected`)을 대기로 옮길지, 다시 판단할지, 물을지
     pub(crate) fn apply_input(&mut self, update: InputUpdate, now: Instant) -> Change {
         let seq = self.next_seq();
         self.judging_tails.retain(|tail| tail.until > now);

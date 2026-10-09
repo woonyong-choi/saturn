@@ -44,12 +44,6 @@ impl Registry {
     /// 어댑터가 session 도중에 다르게 동작하는 일을 막기 위해서다.
     ///
     /// # Errors
-    /// 설명자가 없는 provider의 맥락 값. 기록에만 남은 id의 예산을 계산할 때만 쓴다.
-    const UNKNOWN_CONTEXT: ContextDefaults = ContextDefaults {
-        window: 200_000,
-        cache_write: 1.25,
-    };
-
     /// 등록하지 못한 이유.
     pub(crate) fn register(&mut self, adapter: Arc<dyn Adapter>) -> Result<(), RegisterError> {
         let descriptor = adapter.descriptor();

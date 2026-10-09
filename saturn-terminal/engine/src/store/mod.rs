@@ -167,6 +167,7 @@ impl Store {
         Ok((store, notice))
     }
 
+    #[cfg(test)]
     pub(crate) fn db_path(&self) -> PathBuf {
         self.home.join(DB_FILE)
     }

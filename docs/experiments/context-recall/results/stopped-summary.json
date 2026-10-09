@@ -1,0 +1,6583 @@
+{
+  "phase": "confirmation",
+  "planned_sessions": 162,
+  "sessions_by_status": {
+    "ok": 118,
+    "interrupted": 1,
+    "not_run": 43
+  },
+  "groups": [
+    {
+      "provider": "claude",
+      "arm": "full",
+      "correct": 96,
+      "answer_correct": 96,
+      "new_correct": 48,
+      "questions": 216,
+      "new_questions": 108,
+      "scores_by_set": {
+        "development": {
+          "correct": 48,
+          "questions": 108
+        },
+        "new_questions": {
+          "correct": 48,
+          "questions": 108
+        },
+        "heldout_source": {
+          "correct": 0,
+          "questions": 0
+        }
+      },
+      "valid_runs": 12,
+      "runs": 27,
+      "input_tokens": 722731,
+      "reduction": 0.0
+    },
+    {
+      "provider": "claude",
+      "arm": "packet",
+      "correct": 89,
+      "answer_correct": 89,
+      "new_correct": 41,
+      "questions": 216,
+      "new_questions": 108,
+      "scores_by_set": {
+        "development": {
+          "correct": 48,
+          "questions": 108
+        },
+        "new_questions": {
+          "correct": 41,
+          "questions": 108
+        },
+        "heldout_source": {
+          "correct": 0,
+          "questions": 0
+        }
+      },
+      "valid_runs": 14,
+      "runs": 27,
+      "input_tokens": 526341,
+      "reduction": 0.2717331898036752
+    },
+    {
+      "provider": "claude",
+      "arm": "recall",
+      "correct": 85,
+      "answer_correct": 85,
+      "new_correct": 41,
+      "questions": 216,
+      "new_questions": 108,
+      "scores_by_set": {
+        "development": {
+          "correct": 44,
+          "questions": 108
+        },
+        "new_questions": {
+          "correct": 41,
+          "questions": 108
+        },
+        "heldout_source": {
+          "correct": 0,
+          "questions": 0
+        }
+      },
+      "valid_runs": 11,
+      "runs": 27,
+      "input_tokens": 429944,
+      "reduction": 0.4051119987934654
+    },
+    {
+      "provider": "codex",
+      "arm": "full",
+      "correct": 216,
+      "answer_correct": 216,
+      "new_correct": 108,
+      "questions": 216,
+      "new_questions": 108,
+      "scores_by_set": {
+        "development": {
+          "correct": 108,
+          "questions": 108
+        },
+        "new_questions": {
+          "correct": 108,
+          "questions": 108
+        },
+        "heldout_source": {
+          "correct": 0,
+          "questions": 0
+        }
+      },
+      "valid_runs": 27,
+      "runs": 27,
+      "input_tokens": 849542,
+      "reduction": 0.0
+    },
+    {
+      "provider": "codex",
+      "arm": "packet",
+      "correct": 180,
+      "answer_correct": 180,
+      "new_correct": 84,
+      "questions": 216,
+      "new_questions": 108,
+      "scores_by_set": {
+        "development": {
+          "correct": 96,
+          "questions": 108
+        },
+        "new_questions": {
+          "correct": 84,
+          "questions": 108
+        },
+        "heldout_source": {
+          "correct": 0,
+          "questions": 0
+        }
+      },
+      "valid_runs": 27,
+      "runs": 27,
+      "input_tokens": 615213,
+      "reduction": 0.2758298000569719
+    },
+    {
+      "provider": "codex",
+      "arm": "recall",
+      "correct": 198,
+      "answer_correct": 198,
+      "new_correct": 90,
+      "questions": 216,
+      "new_questions": 108,
+      "scores_by_set": {
+        "development": {
+          "correct": 108,
+          "questions": 108
+        },
+        "new_questions": {
+          "correct": 90,
+          "questions": 108
+        },
+        "heldout_source": {
+          "correct": 0,
+          "questions": 0
+        }
+      },
+      "valid_runs": 27,
+      "runs": 27,
+      "input_tokens": 651542,
+      "reduction": 0.2330667583238969
+    }
+  ],
+  "records": [
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 34360,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 99206,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 32106,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 25567,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 31710,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 47556,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21469,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 25810,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21169,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 51529,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 44083,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 34914,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "name"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": false
+      },
+      "answer_correct": 7,
+      "correct": 7,
+      "input_tokens": 45040,
+      "new_correct": 3,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 3,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 50362,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 100268,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 25813,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 100189,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 37662,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": false
+      },
+      "answer_correct": 7,
+      "correct": 7,
+      "input_tokens": 42331,
+      "new_correct": 3,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 3,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": false,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": false
+      },
+      "answer_correct": 6,
+      "correct": 6,
+      "input_tokens": 45110,
+      "new_correct": 2,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 2,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "unknown",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "unknown",
+        "new_schema": "unknown",
+        "new_path": "unknown",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": false,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": true
+      },
+      "answer_correct": 4,
+      "correct": 4,
+      "input_tokens": 48434,
+      "new_correct": 1,
+      "scores_by_set": {
+        "development": {
+          "correct": 3,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 1,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 47506,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 37126,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "unknown",
+        "struct": "unknown",
+        "greeting": "unknown",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "unknown",
+        "new_field_type": "unknown",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 1,
+      "correct": 1,
+      "input_tokens": 43194,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 1,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 31776,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 45659,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21459,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "unknown",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "unknown",
+        "new_schema": "unknown",
+        "new_path": "unknown",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": false,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": true
+      },
+      "answer_correct": 4,
+      "correct": 4,
+      "input_tokens": 48137,
+      "new_correct": 1,
+      "scores_by_set": {
+        "development": {
+          "correct": 3,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 1,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 32946,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 44045,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 50428,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 33803,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 33198,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21944,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "unknown",
+        "struct": "unknown",
+        "greeting": "unknown",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "unknown",
+        "new_field_type": "unknown",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 1,
+      "correct": 1,
+      "input_tokens": 43122,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 1,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 90047,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 89938,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": false,
+      "status": "interrupted",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "repeat": 1,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "repeat": 2,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "repeat": 3,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "repeat": 1,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "repeat": 3,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "repeat": 2,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "repeat": 3,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "repeat": 1,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "repeat": 3,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "repeat": 3,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "repeat": 2,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "repeat": 1,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "repeat": 1,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "repeat": 2,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "repeat": 2,
+      "arm": "full",
+      "valid": false,
+      "status": "not_run",
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "answer_correct": 0,
+      "correct": 0,
+      "input_tokens": 0,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 0,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 25238,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 41429,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21585,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 20122,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21341,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 25614,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18361,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 20210,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18223,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 27816,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 26613,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 23213,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "unknown",
+        "new_field_type": "unknown",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 4,
+      "correct": 4,
+      "input_tokens": 28784,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 27504,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 41429,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 20210,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 41429,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 23719,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": false
+      },
+      "answer_correct": 7,
+      "correct": 7,
+      "input_tokens": 24890,
+      "new_correct": 3,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 3,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "unknown",
+        "new_field_type": "unknown",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 4,
+      "correct": 4,
+      "input_tokens": 26611,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "unknown",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "unknown",
+        "new_schema": "unknown",
+        "new_path": "unknown",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": false,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": true
+      },
+      "answer_correct": 4,
+      "correct": 4,
+      "input_tokens": 25856,
+      "new_correct": 1,
+      "scores_by_set": {
+        "development": {
+          "correct": 3,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 1,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 25614,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 23719,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "unknown",
+        "struct": "unknown",
+        "greeting": "unknown",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "unknown",
+        "new_field_type": "unknown",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 1,
+      "correct": 1,
+      "input_tokens": 27197,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 1,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21341,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 26140,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18307,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "unknown",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "unknown",
+        "new_schema": "unknown",
+        "new_path": "unknown",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": false,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": true
+      },
+      "answer_correct": 4,
+      "correct": 4,
+      "input_tokens": 25856,
+      "new_correct": 1,
+      "scores_by_set": {
+        "development": {
+          "correct": 3,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 1,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21854,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 26613,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 27504,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21789,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21854,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18699,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "unknown",
+        "struct": "unknown",
+        "greeting": "unknown",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "unknown",
+        "new_field_type": "unknown",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 1,
+      "correct": 1,
+      "input_tokens": 25024,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 1,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 40823,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 40823,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "unknown",
+        "struct": "unknown",
+        "greeting": "unknown",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "unknown",
+        "new_field_type": "unknown",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": true,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 1,
+      "correct": 1,
+      "input_tokens": 25024,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 1,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 26140,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 23514,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21585,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": false,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": false
+      },
+      "answer_correct": 6,
+      "correct": 6,
+      "input_tokens": 26744,
+      "new_correct": 2,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 2,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "unknown",
+        "new_field_type": "unknown",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_call": false
+      },
+      "answer_correct": 4,
+      "correct": 4,
+      "input_tokens": 26611,
+      "new_correct": 0,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 0,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21585,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 37675,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 40823,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18699,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 23719,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 37675,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": false,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": false
+      },
+      "answer_correct": 6,
+      "correct": 6,
+      "input_tokens": 26744,
+      "new_correct": 2,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 2,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 37675,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 27504,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18361,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 49308,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18361,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18223,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "unknown",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "unknown",
+        "new_schema": "unknown",
+        "new_path": "unknown",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": false,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": true
+      },
+      "answer_correct": 4,
+      "correct": 4,
+      "input_tokens": 25856,
+      "new_correct": 1,
+      "scores_by_set": {
+        "development": {
+          "correct": 3,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 1,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": false
+      },
+      "answer_correct": 7,
+      "correct": 7,
+      "input_tokens": 24890,
+      "new_correct": 3,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 3,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 26140,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": false
+      },
+      "answer_correct": 7,
+      "correct": 7,
+      "input_tokens": 24890,
+      "new_correct": 3,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 3,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 25614,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18223,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "unknown",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "unknown"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": false,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": false
+      },
+      "answer_correct": 6,
+      "correct": 6,
+      "input_tokens": 26744,
+      "new_correct": 2,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 2,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "repeat": 3,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 47135,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 20480,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 27816,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21854,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 20122,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "repeat": 2,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 23065,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "repeat": 1,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21789,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 20122,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 23213,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 23213,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "repeat": 1,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 26613,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18699,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "repeat": 1,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 27816,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "repeat": 3,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 21789,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 22383,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "repeat": 3,
+      "arm": "recall",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_call": "greet"
+      },
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_call": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 23065,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "repeat": 2,
+      "arm": "packet",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 18307,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "repeat": 2,
+      "arm": "full",
+      "valid": true,
+      "status": "ok",
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answer_correct": 8,
+      "correct": 8,
+      "input_tokens": 47135,
+      "new_correct": 4,
+      "scores_by_set": {
+        "development": {
+          "correct": 4,
+          "questions": 4
+        },
+        "new_questions": {
+          "correct": 4,
+          "questions": 4
+        }
+      }
+    }
+  ]
+}

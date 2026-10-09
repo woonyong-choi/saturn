@@ -118,8 +118,14 @@ async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
                     !rest.contains(RULE),
                     "{name}: rule leaked into other zones: {packet}"
                 );
+                let recent = packet.split_once("## Recent turns").unwrap().1;
+                let (recent, earlier) = recent.split_once("## Earlier records").unwrap();
                 assert!(
-                    !packet.contains("task 1 write the cache\nAgent"),
+                    !recent.contains("task 1 write the cache"),
+                    "{name}: {packet}"
+                );
+                assert!(
+                    earlier.contains("task 1 write the cache"),
                     "{name}: {packet}"
                 );
             },

@@ -16,10 +16,10 @@ use crate::secrets::is_sensitive_header;
 mod transport;
 mod wire;
 
-use transport::ReqwestTransport;
-pub(crate) use transport::{
-    HttpReply, RetryPolicy, Transport, TransportError, TransportFuture, send_with,
-};
+pub(crate) use transport::ReqwestTransport;
+pub(crate) use transport::{HttpReply, RetryPolicy, Transport, TransportError};
+#[cfg(test)]
+use transport::{TransportFuture, send_with};
 use wire::{expand_choices, merge_responses, split_request};
 pub(crate) use wire::{parse_router_reply, router_body};
 

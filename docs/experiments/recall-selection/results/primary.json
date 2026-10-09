@@ -1,0 +1,3163 @@
+{
+  "groups": [
+    {
+      "provider": "claude",
+      "subset": "all",
+      "arm": "full",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 103,
+      "questions": 104,
+      "input_tokens": 1070023,
+      "reduction_from_baseline": -0.8163628709459483,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "claude",
+      "subset": "all",
+      "arm": "baseline",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 102,
+      "questions": 104,
+      "input_tokens": 589102,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.44944921744672783
+    },
+    {
+      "provider": "claude",
+      "subset": "all",
+      "arm": "candidate",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 102,
+      "questions": 104,
+      "input_tokens": 584742,
+      "reduction_from_baseline": 0.007401095226293619,
+      "reduction_from_full": 0.45352389621531497
+    },
+    {
+      "provider": "claude",
+      "subset": "conversation",
+      "arm": "full",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 605508,
+      "reduction_from_baseline": -0.5145045346993291,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "claude",
+      "subset": "conversation",
+      "arm": "baseline",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 399806,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.3397180549224783
+    },
+    {
+      "provider": "claude",
+      "subset": "conversation",
+      "arm": "candidate",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 396103,
+      "reduction_from_baseline": 0.00926199206615208,
+      "reduction_from_full": 0.3458335810592098
+    },
+    {
+      "provider": "claude",
+      "subset": "document",
+      "arm": "full",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 23,
+      "questions": 24,
+      "input_tokens": 464515,
+      "reduction_from_baseline": -1.4539081649902799,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "claude",
+      "subset": "document",
+      "arm": "baseline",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 22,
+      "questions": 24,
+      "input_tokens": 189296,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.5924867872942747
+    },
+    {
+      "provider": "claude",
+      "subset": "document",
+      "arm": "candidate",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 22,
+      "questions": 24,
+      "input_tokens": 188639,
+      "reduction_from_baseline": 0.003470754796720432,
+      "reduction_from_full": 0.593901165732
+    },
+    {
+      "provider": "claude",
+      "subset": "single",
+      "arm": "full",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 3,
+      "questions": 4,
+      "input_tokens": 232051,
+      "reduction_from_baseline": -1.4597568343951068,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "claude",
+      "subset": "single",
+      "arm": "baseline",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 4,
+      "questions": 4,
+      "input_tokens": 94339,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.5934557489517391
+    },
+    {
+      "provider": "claude",
+      "subset": "single",
+      "arm": "candidate",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 4,
+      "questions": 4,
+      "input_tokens": 93687,
+      "reduction_from_baseline": 0.006911245614221073,
+      "reduction_from_full": 0.5962654761237831
+    },
+    {
+      "provider": "codex",
+      "subset": "all",
+      "arm": "full",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 104,
+      "questions": 104,
+      "input_tokens": 547291,
+      "reduction_from_baseline": -0.3312098812277591,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "codex",
+      "subset": "all",
+      "arm": "baseline",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 102,
+      "questions": 104,
+      "input_tokens": 411123,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.24880365290129014
+    },
+    {
+      "provider": "codex",
+      "subset": "all",
+      "arm": "candidate",
+      "runs": 18,
+      "valid_runs": 18,
+      "correct": 102,
+      "questions": 104,
+      "input_tokens": 408463,
+      "reduction_from_baseline": 0.006470083162459894,
+      "reduction_from_full": 0.2536639557383549
+    },
+    {
+      "provider": "codex",
+      "subset": "conversation",
+      "arm": "full",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 308502,
+      "reduction_from_baseline": -0.22036915433119453,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "codex",
+      "subset": "conversation",
+      "arm": "baseline",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 252794,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.18057581474350248
+    },
+    {
+      "provider": "codex",
+      "subset": "conversation",
+      "arm": "candidate",
+      "runs": 10,
+      "valid_runs": 10,
+      "correct": 80,
+      "questions": 80,
+      "input_tokens": 250427,
+      "reduction_from_baseline": 0.009363355142922747,
+      "reduction_from_full": 0.1882483744027591
+    },
+    {
+      "provider": "codex",
+      "subset": "document",
+      "arm": "full",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 24,
+      "questions": 24,
+      "input_tokens": 238789,
+      "reduction_from_baseline": -0.5081823292005887,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "codex",
+      "subset": "document",
+      "arm": "baseline",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 22,
+      "questions": 24,
+      "input_tokens": 158329,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.3369501945231983
+    },
+    {
+      "provider": "codex",
+      "subset": "document",
+      "arm": "candidate",
+      "runs": 8,
+      "valid_runs": 8,
+      "correct": 22,
+      "questions": 24,
+      "input_tokens": 158036,
+      "reduction_from_baseline": 0.0018505769631590452,
+      "reduction_from_full": 0.33817721921864075
+    },
+    {
+      "provider": "codex",
+      "subset": "single",
+      "arm": "full",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 4,
+      "questions": 4,
+      "input_tokens": 120336,
+      "reduction_from_baseline": -0.5235104955308536,
+      "reduction_from_full": 0.0
+    },
+    {
+      "provider": "codex",
+      "subset": "single",
+      "arm": "baseline",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 4,
+      "questions": 4,
+      "input_tokens": 78986,
+      "reduction_from_baseline": 0.0,
+      "reduction_from_full": 0.3436211939901609
+    },
+    {
+      "provider": "codex",
+      "subset": "single",
+      "arm": "candidate",
+      "runs": 4,
+      "valid_runs": 4,
+      "correct": 4,
+      "questions": 4,
+      "input_tokens": 78693,
+      "reduction_from_baseline": 0.00370951814245557,
+      "reduction_from_full": 0.34605604307937776
+    }
+  ],
+  "regressions": [],
+  "records": [
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "learning-12",
+      "trial": "learning-12",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 32162,
+      "elapsed_s": 11.391207042000001
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true,
+        "retry": true,
+        "deadline": true,
+        "logs": true,
+        "unknown": true
+      },
+      "answers": {
+        "interval": "0.5",
+        "retry": "5",
+        "deadline": "10",
+        "logs": "30",
+        "unknown": "unknown"
+      },
+      "input_tokens": 23743,
+      "elapsed_s": 6.735895832999999
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "audit-26",
+      "trial": "audit-26",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": 1,
+        "unknown": "unknown",
+        "new_milestone": 2,
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 54836,
+      "elapsed_s": 12.582741040999998
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "audit-16",
+      "trial": "audit-16",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 52239,
+      "elapsed_s": 12.195005874999996
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "audit-8",
+      "trial": "audit-8",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": 1,
+        "unknown": "unknown",
+        "new_milestone": 2,
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 39374,
+      "elapsed_s": 10.153422042000003
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "design-chain",
+      "trial": "design-chain",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "document": true,
+        "branch": true,
+        "status": true,
+        "push": true,
+        "depth": true,
+        "candidates": true,
+        "record_field": true,
+        "unknown": true
+      },
+      "answers": {
+        "document": "docs/design/judge-chains.md",
+        "branch": "docs/68-judge-chains",
+        "status": "제안",
+        "push": "no",
+        "depth": "2",
+        "candidates": "3",
+        "record_field": "applied_step",
+        "unknown": "unknown"
+      },
+      "input_tokens": 39518,
+      "elapsed_s": 10.257402458000001
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "learning-12",
+      "trial": "learning-12",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 35628,
+      "elapsed_s": 9.099908209000006
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-settings-single",
+      "trial": "document-settings-single",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true
+      },
+      "answers": {
+        "interval": "0.5"
+      },
+      "input_tokens": 23432,
+      "elapsed_s": 7.970257666000009
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "learning-59",
+      "trial": "learning-59",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 48275,
+      "elapsed_s": 11.324720458999991
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "learning-30",
+      "trial": "learning-30",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": 1
+      },
+      "input_tokens": 46688,
+      "elapsed_s": 11.396948332999997
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "interruption",
+      "trial": "interruption",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "input_tokens": 37882,
+      "elapsed_s": 13.31398575
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-records-single",
+      "trial": "document-records-single",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true
+      },
+      "answers": {
+        "extensions": "12"
+      },
+      "input_tokens": 23570,
+      "elapsed_s": 8.664505083999998
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true
+      },
+      "answers": {
+        "gitconfig": "ask"
+      },
+      "input_tokens": 23468,
+      "elapsed_s": 10.146297750000016
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "interruption",
+      "trial": "interruption",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "input_tokens": 44051,
+      "elapsed_s": 13.878460042
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true,
+        "retry": true,
+        "deadline": true,
+        "logs": true,
+        "unknown": true
+      },
+      "answers": {
+        "interval": "0.5",
+        "retry": "5",
+        "deadline": "10",
+        "logs": "30",
+        "unknown": "unknown"
+      },
+      "input_tokens": 23753,
+      "elapsed_s": 6.565774250000004
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true
+      },
+      "answers": {
+        "idle": "10"
+      },
+      "input_tokens": 46201,
+      "elapsed_s": 8.079528042000021
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "interruption",
+      "trial": "interruption",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "input_tokens": 37073,
+      "elapsed_s": 12.1881865
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-records-batch",
+      "trial": "document-records-batch",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true,
+        "direct": false,
+        "active": false,
+        "changes": true,
+        "unknown": true
+      },
+      "answers": {
+        "extensions": "12",
+        "direct": "unknown",
+        "active": "unknown",
+        "changes": "11",
+        "unknown": "unknown"
+      },
+      "input_tokens": 23508,
+      "elapsed_s": 7.530000999999999
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true
+      },
+      "answers": {
+        "gitconfig": "ask"
+      },
+      "input_tokens": 23547,
+      "elapsed_s": 14.772047834000006
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "audit-8",
+      "trial": "audit-8",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 85936,
+      "elapsed_s": 10.709445082999991
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true,
+        "maximum": true,
+        "mode": true,
+        "poll": true,
+        "unknown": true
+      },
+      "answers": {
+        "idle": "10",
+        "maximum": "12",
+        "mode": "0600",
+        "poll": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 46296,
+      "elapsed_s": 7.965955125000022
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "learning-30",
+      "trial": "learning-30",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": 1
+      },
+      "input_tokens": 47307,
+      "elapsed_s": 10.437804583000002
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "audit-16",
+      "trial": "audit-16",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 52953,
+      "elapsed_s": 14.657723500000003
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "relay",
+      "trial": "relay",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "input_tokens": 21966,
+      "elapsed_s": 9.99971366699998
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-records-single",
+      "trial": "document-records-single",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true
+      },
+      "answers": {
+        "extensions": "12"
+      },
+      "input_tokens": 56518,
+      "elapsed_s": 9.393083749999988
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "audit-26",
+      "trial": "audit-26",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 118219,
+      "elapsed_s": 15.552368709000007
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "learning-59",
+      "trial": "learning-59",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 90163,
+      "elapsed_s": 13.270407583000008
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true,
+        "gitignore": true,
+        "precedence": true,
+        "unknown_command": true,
+        "unknown": true
+      },
+      "answers": {
+        "gitconfig": "ask",
+        "gitignore": "allow",
+        "precedence": "deny",
+        "unknown_command": "deny",
+        "unknown": "unknown"
+      },
+      "input_tokens": 23772,
+      "elapsed_s": 10.588131541999985
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "notes",
+      "trial": "notes",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "input_tokens": 21429,
+      "elapsed_s": 9.84724962499996
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-settings-single",
+      "trial": "document-settings-single",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true
+      },
+      "answers": {
+        "interval": "0.5"
+      },
+      "input_tokens": 53465,
+      "elapsed_s": 8.387357250000036
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "learning-59",
+      "trial": "learning-59",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 48143,
+      "elapsed_s": 9.847626999999989
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true,
+        "maximum": true,
+        "mode": true,
+        "poll": true,
+        "unknown": true
+      },
+      "answers": {
+        "idle": 10,
+        "maximum": 12,
+        "mode": "0600",
+        "poll": 1,
+        "unknown": "unknown"
+      },
+      "input_tokens": 23849,
+      "elapsed_s": 9.165682917000026
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "design-chain",
+      "trial": "design-chain",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "document": true,
+        "branch": true,
+        "status": true,
+        "push": true,
+        "depth": true,
+        "candidates": true,
+        "record_field": true,
+        "unknown": true
+      },
+      "answers": {
+        "document": "docs/design/judge-chains.md",
+        "branch": "docs/68-judge-chains",
+        "status": "제안",
+        "push": "no",
+        "depth": "2",
+        "candidates": "3",
+        "record_field": "applied_step",
+        "unknown": "unknown"
+      },
+      "input_tokens": 38737,
+      "elapsed_s": 15.242329292000022
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "audit-16",
+      "trial": "audit-16",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 99030,
+      "elapsed_s": 19.383398540999963
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": false
+      },
+      "answers": {
+        "decision": "ask"
+      },
+      "input_tokens": 75867,
+      "elapsed_s": 10.498247625000033
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "design-chain",
+      "trial": "design-chain",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "document": true,
+        "branch": true,
+        "status": true,
+        "push": true,
+        "depth": true,
+        "candidates": true,
+        "record_field": true,
+        "unknown": true
+      },
+      "answers": {
+        "document": "docs/design/judge-chains.md",
+        "branch": "docs/68-judge-chains",
+        "status": "제안",
+        "push": "no",
+        "depth": "2",
+        "candidates": "3",
+        "record_field": "applied_step",
+        "unknown": "unknown"
+      },
+      "input_tokens": 39779,
+      "elapsed_s": 8.939445624999962
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-records-batch",
+      "trial": "document-records-batch",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true,
+        "direct": false,
+        "active": false,
+        "changes": true,
+        "unknown": true
+      },
+      "answers": {
+        "extensions": "12",
+        "direct": "unknown",
+        "active": "unknown",
+        "changes": "11",
+        "unknown": "unknown"
+      },
+      "input_tokens": 23583,
+      "elapsed_s": 7.326030458000048
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true,
+        "maximum": true,
+        "mode": true,
+        "poll": true,
+        "unknown": true
+      },
+      "answers": {
+        "idle": 10,
+        "maximum": 12,
+        "mode": "0600",
+        "poll": 1,
+        "unknown": "unknown"
+      },
+      "input_tokens": 23894,
+      "elapsed_s": 7.6318212079999626
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "relay",
+      "trial": "relay",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "input_tokens": 25780,
+      "elapsed_s": 9.557610000000011
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "notes",
+      "trial": "notes",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "input_tokens": 21440,
+      "elapsed_s": 11.26761529199996
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true,
+        "gitignore": true,
+        "precedence": true,
+        "unknown_command": true,
+        "unknown": true
+      },
+      "answers": {
+        "gitconfig": "ask",
+        "gitignore": "allow",
+        "precedence": "deny",
+        "unknown_command": "deny",
+        "unknown": "unknown"
+      },
+      "input_tokens": 76053,
+      "elapsed_s": 10.485477542000012
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true,
+        "retry": true,
+        "deadline": true,
+        "logs": true,
+        "unknown": true
+      },
+      "answers": {
+        "interval": "0.5",
+        "retry": "5",
+        "deadline": "10",
+        "logs": "30",
+        "unknown": "unknown"
+      },
+      "input_tokens": 53536,
+      "elapsed_s": 9.480556459000013
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "audit-26",
+      "trial": "audit-26",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 54325,
+      "elapsed_s": 11.267279667000025
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-settings-single",
+      "trial": "document-settings-single",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true
+      },
+      "answers": {
+        "interval": "0.5"
+      },
+      "input_tokens": 23563,
+      "elapsed_s": 7.107857165999974
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "learning-12",
+      "trial": "learning-12",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 35506,
+      "elapsed_s": 12.217159750000008
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "relay",
+      "trial": "relay",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "input_tokens": 21797,
+      "elapsed_s": 10.782345040999985
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "learning-30",
+      "trial": "learning-30",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": 1
+      },
+      "input_tokens": 45869,
+      "elapsed_s": 11.722909291999997
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true
+      },
+      "answers": {
+        "idle": "10"
+      },
+      "input_tokens": 23641,
+      "elapsed_s": 6.4886602500000095
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true,
+        "gitignore": true,
+        "precedence": true,
+        "unknown_command": true,
+        "unknown": true
+      },
+      "answers": {
+        "gitconfig": "ask",
+        "gitignore": "allow",
+        "precedence": "deny",
+        "unknown_command": "deny",
+        "unknown": "unknown"
+      },
+      "input_tokens": 23807,
+      "elapsed_s": 9.245694334000007
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true
+      },
+      "answers": {
+        "idle": "10"
+      },
+      "input_tokens": 23217,
+      "elapsed_s": 6.039320249999946
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "notes",
+      "trial": "notes",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "input_tokens": 25561,
+      "elapsed_s": 10.698351083000034
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "audit-8",
+      "trial": "audit-8",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 39751,
+      "elapsed_s": 14.074862541000016
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-records-single",
+      "trial": "document-records-single",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true
+      },
+      "answers": {
+        "extensions": "12"
+      },
+      "input_tokens": 23588,
+      "elapsed_s": 6.70120637499997
+    },
+    {
+      "provider": "claude",
+      "source_phase": "primary",
+      "case": "document-records-batch",
+      "trial": "document-records-batch",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true,
+        "direct": true,
+        "active": true,
+        "changes": true,
+        "unknown": true
+      },
+      "answers": {
+        "extensions": "12",
+        "direct": "14",
+        "active": "2",
+        "changes": "11",
+        "unknown": "unknown"
+      },
+      "input_tokens": 56579,
+      "elapsed_s": 10.476454042
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "learning-12",
+      "trial": "learning-12",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 21651,
+      "elapsed_s": 6.267462083
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true,
+        "retry": true,
+        "deadline": true,
+        "logs": true,
+        "unknown": true
+      },
+      "answers": {
+        "interval": "0.5",
+        "retry": "5",
+        "deadline": "10",
+        "logs": "30",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19798,
+      "elapsed_s": 5.065987541
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "audit-26",
+      "trial": "audit-26",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 29914,
+      "elapsed_s": 4.034105375000001
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "audit-16",
+      "trial": "audit-16",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 28792,
+      "elapsed_s": 5.422406625000001
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "audit-8",
+      "trial": "audit-8",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 25143,
+      "elapsed_s": 3.843627667
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "design-chain",
+      "trial": "design-chain",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "document": true,
+        "branch": true,
+        "status": true,
+        "push": true,
+        "depth": true,
+        "candidates": true,
+        "record_field": true,
+        "unknown": true
+      },
+      "answers": {
+        "document": "docs/design/judge-chains.md",
+        "branch": "docs/68-judge-chains",
+        "status": "제안",
+        "push": "no",
+        "depth": "2",
+        "candidates": "3",
+        "record_field": "applied_step",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25538,
+      "elapsed_s": 3.481020417
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "learning-12",
+      "trial": "learning-12",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 23913,
+      "elapsed_s": 5.524844082999998
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-settings-single",
+      "trial": "document-settings-single",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true
+      },
+      "answers": {
+        "interval": "0.5"
+      },
+      "input_tokens": 19696,
+      "elapsed_s": 3.4195879159999976
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "learning-59",
+      "trial": "learning-59",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 28536,
+      "elapsed_s": 4.133023999999999
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "learning-30",
+      "trial": "learning-30",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 27716,
+      "elapsed_s": 6.112635917000006
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "interruption",
+      "trial": "interruption",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "input_tokens": 24946,
+      "elapsed_s": 5.088696667000001
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-records-single",
+      "trial": "document-records-single",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true
+      },
+      "answers": {
+        "extensions": "12"
+      },
+      "input_tokens": 19764,
+      "elapsed_s": 3.7164050000000017
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true
+      },
+      "answers": {
+        "gitconfig": "ask"
+      },
+      "input_tokens": 19773,
+      "elapsed_s": 3.663191916999999
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "interruption",
+      "trial": "interruption",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "input_tokens": 26660,
+      "elapsed_s": 4.314791540999998
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true,
+        "retry": true,
+        "deadline": true,
+        "logs": true,
+        "unknown": true
+      },
+      "answers": {
+        "interval": "0.5",
+        "retry": "5",
+        "deadline": "10",
+        "logs": "30",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19798,
+      "elapsed_s": 3.155201875000003
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true
+      },
+      "answers": {
+        "idle": "10"
+      },
+      "input_tokens": 25847,
+      "elapsed_s": 3.3255100419999906
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "interruption",
+      "trial": "interruption",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "first_read": true,
+        "marker": true,
+        "backup": true,
+        "unknown": true,
+        "new_paragraphs": true,
+        "new_other_file": true,
+        "new_search": true,
+        "new_language": true
+      },
+      "answers": {
+        "first_read": "missing",
+        "marker": "INTERRUPTED_622",
+        "backup": "14",
+        "unknown": "unknown",
+        "new_paragraphs": "20",
+        "new_other_file": "README.md",
+        "new_search": "find",
+        "new_language": "한국어"
+      },
+      "input_tokens": 24341,
+      "elapsed_s": 5.226354708000002
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-records-batch",
+      "trial": "document-records-batch",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true,
+        "direct": false,
+        "active": false,
+        "changes": true,
+        "unknown": true
+      },
+      "answers": {
+        "extensions": "12",
+        "direct": "unknown",
+        "active": "unknown",
+        "changes": "11",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19740,
+      "elapsed_s": 4.504156458000011
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true
+      },
+      "answers": {
+        "gitconfig": "ask"
+      },
+      "input_tokens": 19773,
+      "elapsed_s": 4.755431416999997
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "audit-8",
+      "trial": "audit-8",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 37722,
+      "elapsed_s": 6.196641791000005
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true,
+        "maximum": true,
+        "mode": true,
+        "poll": true,
+        "unknown": true
+      },
+      "answers": {
+        "idle": "10",
+        "maximum": "12",
+        "mode": "0600",
+        "poll": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25923,
+      "elapsed_s": 4.011908707999993
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "learning-30",
+      "trial": "learning-30",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 28134,
+      "elapsed_s": 5.022203708999996
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "audit-16",
+      "trial": "audit-16",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 29091,
+      "elapsed_s": 5.212092791999993
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "relay",
+      "trial": "relay",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "input_tokens": 18780,
+      "elapsed_s": 6.17259
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-records-single",
+      "trial": "document-records-single",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true
+      },
+      "answers": {
+        "extensions": "12"
+      },
+      "input_tokens": 31162,
+      "elapsed_s": 3.7592184580000065
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "audit-26",
+      "trial": "audit-26",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 47182,
+      "elapsed_s": 5.439932083999992
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "learning-59",
+      "trial": "learning-59",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 40889,
+      "elapsed_s": 5.2537594579999904
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true,
+        "gitignore": true,
+        "precedence": true,
+        "unknown_command": true,
+        "unknown": true
+      },
+      "answers": {
+        "gitconfig": "ask",
+        "gitignore": "allow",
+        "precedence": "deny",
+        "unknown_command": "deny",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19985,
+      "elapsed_s": 5.138381542000005
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "notes",
+      "trial": "notes",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "input_tokens": 18442,
+      "elapsed_s": 5.220656792
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-settings-single",
+      "trial": "document-settings-single",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true
+      },
+      "answers": {
+        "interval": "0.5"
+      },
+      "input_tokens": 28045,
+      "elapsed_s": 4.529230124999998
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "learning-59",
+      "trial": "learning-59",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 28458,
+      "elapsed_s": 4.400855958000022
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true,
+        "maximum": true,
+        "mode": true,
+        "poll": true,
+        "unknown": true
+      },
+      "answers": {
+        "idle": "10",
+        "maximum": "12",
+        "mode": "0600",
+        "poll": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19820,
+      "elapsed_s": 5.353599083000006
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "design-chain",
+      "trial": "design-chain",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "document": true,
+        "branch": true,
+        "status": true,
+        "push": true,
+        "depth": true,
+        "candidates": true,
+        "record_field": true,
+        "unknown": true
+      },
+      "answers": {
+        "document": "docs/design/judge-chains.md",
+        "branch": "docs/68-judge-chains",
+        "status": "제안",
+        "push": "no",
+        "depth": "2",
+        "candidates": "3",
+        "record_field": "applied_step",
+        "unknown": "unknown"
+      },
+      "input_tokens": 24117,
+      "elapsed_s": 4.705927124999988
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "audit-16",
+      "trial": "audit-16",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 41476,
+      "elapsed_s": 6.510615000000001
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true
+      },
+      "answers": {
+        "gitconfig": "ask"
+      },
+      "input_tokens": 35282,
+      "elapsed_s": 4.064812042
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "design-chain",
+      "trial": "design-chain",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "document": true,
+        "branch": true,
+        "status": true,
+        "push": true,
+        "depth": true,
+        "candidates": true,
+        "record_field": true,
+        "unknown": true
+      },
+      "answers": {
+        "document": "docs/design/judge-chains.md",
+        "branch": "docs/68-judge-chains",
+        "status": "제안",
+        "push": "no",
+        "depth": "2",
+        "candidates": "3",
+        "record_field": "applied_step",
+        "unknown": "unknown"
+      },
+      "input_tokens": 25707,
+      "elapsed_s": 4.287110624999997
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-records-batch",
+      "trial": "document-records-batch",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true,
+        "direct": false,
+        "active": false,
+        "changes": true,
+        "unknown": true
+      },
+      "answers": {
+        "extensions": "12",
+        "direct": "unknown",
+        "active": "unknown",
+        "changes": "11",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19740,
+      "elapsed_s": 5.30218291700001
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true,
+        "maximum": true,
+        "mode": true,
+        "poll": true,
+        "unknown": true
+      },
+      "answers": {
+        "idle": "10",
+        "maximum": "12",
+        "mode": "0600",
+        "poll": "1",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19820,
+      "elapsed_s": 3.751037709000002
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "relay",
+      "trial": "relay",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "input_tokens": 20257,
+      "elapsed_s": 6.19721395800002
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "notes",
+      "trial": "notes",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "input_tokens": 18442,
+      "elapsed_s": 4.913534624999983
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true,
+        "gitignore": true,
+        "precedence": true,
+        "unknown_command": true,
+        "unknown": true
+      },
+      "answers": {
+        "gitconfig": "ask",
+        "gitignore": "allow",
+        "precedence": "deny",
+        "unknown_command": "deny",
+        "unknown": "unknown"
+      },
+      "input_tokens": 35349,
+      "elapsed_s": 6.069859625000021
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true,
+        "retry": true,
+        "deadline": true,
+        "logs": true,
+        "unknown": true
+      },
+      "answers": {
+        "interval": "0.5",
+        "retry": "5",
+        "deadline": "10",
+        "logs": "30",
+        "unknown": "unknown"
+      },
+      "input_tokens": 28114,
+      "elapsed_s": 3.487100292000008
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "audit-26",
+      "trial": "audit-26",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 29655,
+      "elapsed_s": 4.395613459000003
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-settings-single",
+      "trial": "document-settings-single",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "interval": true
+      },
+      "answers": {
+        "interval": "0.5"
+      },
+      "input_tokens": 19696,
+      "elapsed_s": 7.635276583000007
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "learning-12",
+      "trial": "learning-12",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 23712,
+      "elapsed_s": 4.212040042000012
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "relay",
+      "trial": "relay",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "second": true,
+        "unknown": true,
+        "new_reply": true,
+        "new_third": true,
+        "new_end": true,
+        "new_count": true
+      },
+      "answers": {
+        "file": "relay.txt",
+        "first": "CLAUDE_FINAL_622",
+        "second": "CODEX_FINAL_622",
+        "unknown": "unknown",
+        "new_reply": "CLAUDE_REPLY_622",
+        "new_third": "CLAUDE_RETURN_622",
+        "new_end": "CLAUDE_END_622",
+        "new_count": "3"
+      },
+      "input_tokens": 18630,
+      "elapsed_s": 5.086593249999993
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "learning-30",
+      "trial": "learning-30",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "trait": true,
+        "struct": true,
+        "greeting": true,
+        "unknown": true,
+        "new_name": true,
+        "new_field": true,
+        "new_field_type": true,
+        "new_count": true
+      },
+      "answers": {
+        "trait": "Greet",
+        "struct": "User",
+        "greeting": "안녕하세요!",
+        "unknown": "unknown",
+        "new_name": "민지",
+        "new_field": "name",
+        "new_field_type": "String",
+        "new_count": "1"
+      },
+      "input_tokens": 28379,
+      "elapsed_s": 5.401057457999997
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true
+      },
+      "answers": {
+        "idle": "10"
+      },
+      "input_tokens": 19753,
+      "elapsed_s": 4.217625583
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "gitconfig": true,
+        "gitignore": true,
+        "precedence": true,
+        "unknown_command": true,
+        "unknown": true
+      },
+      "answers": {
+        "gitconfig": "ask",
+        "gitignore": "allow",
+        "precedence": "deny",
+        "unknown_command": "deny",
+        "unknown": "unknown"
+      },
+      "input_tokens": 19985,
+      "elapsed_s": 4.83688783300002
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single",
+      "arm": "candidate",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "idle": true
+      },
+      "answers": {
+        "idle": "10"
+      },
+      "input_tokens": 19460,
+      "elapsed_s": 3.655809457999993
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "notes",
+      "trial": "notes",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "file": true,
+        "first": true,
+        "last": true,
+        "unknown": true,
+        "new_second": true,
+        "new_third": true,
+        "new_append": true,
+        "new_prefix": true
+      },
+      "answers": {
+        "file": "notes.md",
+        "first": "alpha",
+        "last": "zeta",
+        "unknown": "unknown",
+        "new_second": "beta",
+        "new_third": "gamma",
+        "new_append": "delta",
+        "new_prefix": "-"
+      },
+      "input_tokens": 20169,
+      "elapsed_s": 6.206916750000005
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "audit-8",
+      "trial": "audit-8",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "rules": true,
+        "temporary": true,
+        "prompt": true,
+        "unknown": true,
+        "new_milestone": true,
+        "new_schema": true,
+        "new_path": true,
+        "new_compiler": true
+      },
+      "answers": {
+        "rules": "CLAUDE.md",
+        "temporary": "mktemp",
+        "prompt": "1",
+        "unknown": "unknown",
+        "new_milestone": "2",
+        "new_schema": "V13",
+        "new_path": "providers/codex",
+        "new_compiler": "unknown"
+      },
+      "input_tokens": 25331,
+      "elapsed_s": 5.1791737080000075
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-records-single",
+      "trial": "document-records-single",
+      "arm": "baseline",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true
+      },
+      "answers": {
+        "extensions": "12"
+      },
+      "input_tokens": 19764,
+      "elapsed_s": 4.6377131659999975
+    },
+    {
+      "provider": "codex",
+      "source_phase": "primary",
+      "case": "document-records-batch",
+      "trial": "document-records-batch",
+      "arm": "full",
+      "status": "ok",
+      "valid": true,
+      "checks": {
+        "extensions": true,
+        "direct": true,
+        "active": true,
+        "changes": true,
+        "unknown": true
+      },
+      "answers": {
+        "extensions": "12",
+        "direct": "14",
+        "active": "2",
+        "changes": "11",
+        "unknown": "unknown"
+      },
+      "input_tokens": 29067,
+      "elapsed_s": 4.864973332999995
+    }
+  ]
+}

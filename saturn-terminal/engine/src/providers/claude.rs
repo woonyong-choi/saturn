@@ -240,22 +240,11 @@ impl ClaudeClient {
     }
 
     /// `system/init`을 받기 전이면 `None`.
+    #[cfg(test)]
     pub(crate) fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
         let link = self.sessions.get(session)?;
         let state = lock(&link.state);
         state.initialized.then(|| state.applied.clone())
-    }
-
-    /// 연결 작업 밖에서 적용값을 읽는 함수. 모르는 session이면 `None`.
-    pub(super) fn applied_reader(
-        &self,
-        session: &ProviderSessionId,
-    ) -> Option<super::AppliedReader> {
-        let state = Arc::clone(&self.sessions.get(session)?.state);
-        Some(Arc::new(move || {
-            let state = lock(&state);
-            state.initialized.then(|| state.applied.clone())
-        }))
     }
 
     /// 새 턴 입력을 쓰고 `turn_active`를 켠다. 실패하면 `on_user_send`와 `turn_active`를 되돌린다.

@@ -1,8 +1,6 @@
 //! 로컬 Saturn 모델 연결. 키를 쓰지 않는다.
 //! 설계: docs/design/router.md
-//! TODO(#43): 모델 형식과 실행 방식이 정해지면 `LocalSource`를 확정한다. 그 전에는 `Server`만 동작한다
 
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -19,12 +17,7 @@ const LOCAL_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum LocalSource {
-    /// 승격된 모델 파일.
-    Model {
-        /// router 버전의 모델 경로.
-        path: PathBuf,
-    },
-    /// 이미 떠 있는 로컬 API 서버. 루프백 `http`만 받는다(초안).
+    /// 이미 떠 있는 로컬 API 서버. 루프백 `https`만 받는다(초안).
     Server {
         /// 설정 `router.local.endpoint`(초안).
         endpoint: String,
@@ -41,11 +34,11 @@ pub(crate) struct LocalRouter {
 }
 
 impl LocalRouter {
-    /// 아직 모델을 불러오지 않는다.
     pub(crate) fn new(source: LocalSource, version: String) -> Self {
         let transport: Option<Arc<dyn Transport>> = match &source {
-            LocalSource::Server { .. } => Some(Arc::new(PlainTransport::new())),
-            LocalSource::Model { .. } => None,
+            LocalSource::Server { .. } => super::remote::ReqwestTransport::new()
+                .ok()
+                .map(|transport| Arc::new(transport) as Arc<dyn Transport>),
         };
         Self {
             source,
@@ -72,7 +65,7 @@ impl LocalRouter {
         &self.version
     }
 
-    /// `Model`은 실행 방식이 정해지지 않아(#43) `NoResponse`, `Server`는 루프백 주소가 아니면 보내지 않는다.
+    /// 루프백 주소가 아니면 보내지 않는다.
     pub(crate) async fn exchange(&self, request: RouterRequest) -> RouterExchange {
         let started_at = SystemTime::now();
         let clock = Instant::now();
@@ -117,7 +110,6 @@ impl LocalRouter {
 }
 
 impl RouterClient for LocalRouter {
-    /// `Model`은 실행 방식이 정해질 때까지(#43) 항상 실패한다.
     async fn check(&self) -> Result<(), RouterError> {
         let request = super::check_request(self.version.clone());
         self.exchange(request).await.result.map(|_| ())
@@ -129,7 +121,7 @@ impl RouterClient for LocalRouter {
 }
 
 pub(crate) fn is_loopback(endpoint: &str) -> bool {
-    let Some(rest) = endpoint.strip_prefix("http://") else {
+    let Some(rest) = endpoint.strip_prefix("https://") else {
         return false;
     };
     let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
@@ -140,53 +132,26 @@ pub(crate) fn is_loopback(endpoint: &str) -> bool {
     LOOPBACK_HOSTS.contains(&host)
 }
 
-/// 키를 붙이지 않고 리다이렉트를 따르지 않는다.
-#[derive(Debug)]
-struct PlainTransport {
-    client: reqwest::Client,
-}
-
-impl PlainTransport {
-    fn new() -> Self {
-        let client = reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .unwrap_or_default(); // 설정 없는 빌더는 TLS 초기화 실패 때만 실패한다. 평문 루프백이라 기본 클라이언트로 충분하다
-        Self { client }
-    }
-}
-
-impl Transport for PlainTransport {
-    fn send<'a>(
-        &'a self,
-        url: &'a str,
-        headers: Vec<(String, String)>,
-        body: Option<String>,
-        timeout: Duration,
-    ) -> super::remote::TransportFuture<'a> {
-        super::remote::send_with(&self.client, url, headers, body, timeout)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::routers::remote::tests::{ANSWER, FakeTransport, ok, request};
 
     #[test]
-    fn only_loopback_http_is_allowed() {
+    fn only_loopback_https_is_allowed() {
         for good in [
-            "http://127.0.0.1:8080",
-            "http://localhost",
-            "http://[::1]:9000/x",
+            "https://127.0.0.1:8080",
+            "https://localhost",
+            "https://[::1]:9000/x",
         ] {
             assert!(is_loopback(good), "{good}");
         }
         for bad in [
-            "https://127.0.0.1",
-            "http://10.0.0.2",
-            "http://localhost.evil.com",
-            "http://127.0.0.1.nip.io",
+            "http://127.0.0.1",
+            "https://user:password@localhost",
+            "https://10.0.0.2",
+            "https://localhost.evil.com",
+            "https://127.0.0.1.nip.io",
         ] {
             assert!(!is_loopback(bad), "{bad}");
         }
@@ -196,7 +161,7 @@ mod tests {
     async fn server_source_uses_same_wire_format_without_key() {
         let transport = FakeTransport::new(vec![ok(ANSWER)]);
         let source = LocalSource::Server {
-            endpoint: "http://127.0.0.1:7777/".to_owned(),
+            endpoint: "https://127.0.0.1:7777/".to_owned(),
         };
         let router = LocalRouter::with_transport(source, "saturn-v3".to_owned(), transport.clone());
 
@@ -204,33 +169,25 @@ mod tests {
 
         assert_eq!(exchange.result.unwrap().answers.len(), 3);
         let calls = transport.calls();
-        assert_eq!(calls[0].0, "http://127.0.0.1:7777/v1/systemone");
+        assert_eq!(calls[0].0, "https://127.0.0.1:7777/v1/systemone");
         assert!(calls[0].1.iter().all(|(name, _)| name != "authorization"));
         assert_eq!(router.version(), "saturn-v3");
     }
 
     #[tokio::test]
-    async fn model_source_and_remote_server_are_not_called() {
+    async fn remote_server_is_not_called() {
         let transport = FakeTransport::new(vec![ok(ANSWER)]);
         let remote = LocalRouter::with_transport(
             LocalSource::Server {
-                endpoint: "http://192.168.0.9:7777".to_owned(),
+                endpoint: "https://192.168.0.9:7777".to_owned(),
             },
             "v".to_owned(),
             transport.clone(),
         );
-        let model = LocalRouter::new(
-            LocalSource::Model {
-                path: PathBuf::from("/models/saturn"),
-            },
-            "v".to_owned(),
-        );
-
         assert!(matches!(
             remote.exchange(request()).await.result,
             Err(RouterError::NoResponse)
         ));
-        assert!(matches!(model.check().await, Err(RouterError::NoResponse)));
         assert!(transport.calls().is_empty());
     }
 }

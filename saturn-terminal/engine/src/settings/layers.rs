@@ -103,7 +103,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("tui.screen", Kind::OneOf(&["auto", "full", "plain"])),
     ("tui.on_exit", Kind::OneOf(&["background", "stop", "ask"])),
     ("notify.on_done", Kind::Flag),
-    ("router.mode", Kind::OneOf(&["jev", "saturn", "collect"])),
+    ("router.mode", Kind::OneOf(&["jev", "saturn"])),
     ("router.endpoint", Kind::Text),
     (
         "router.key.info.source",
@@ -476,6 +476,7 @@ pub(crate) fn default_layer() -> &'static str {
 }
 
 /// 병합하지 않고 신뢰도 묻지 않으며 원문만 돌려준다.
+#[cfg(test)]
 pub(crate) async fn read_reference(path: &Path) -> Result<String, SettingsError> {
     std::fs::read_to_string(path).map_err(|source| SettingsError::Io {
         path: path.to_path_buf(),

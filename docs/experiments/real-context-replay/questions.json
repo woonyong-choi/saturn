@@ -1,0 +1,32 @@
+{
+  "learning": [
+    {"id":"trait","question":"사용자가 처음 붙여 넣은 greet(&self) 예제의 trait 이름은? 식별자 하나만.","expected":["Greet"],"anchor":"user turn 10"},
+    {"id":"struct","question":"그 greet 예제에서 trait를 구현하는 struct 이름은? 식별자 하나만.","expected":["User"],"anchor":"user turn 10"},
+    {"id":"greeting","question":"그 예제의 println! 문자열은? 문자열 내용만.","expected":["안녕하세요!"],"anchor":"user turn 10"},
+    {"id":"unknown","question":"사용자가 정한 프로덕션 데이터베이스 비밀번호는? 없으면 unknown.","expected":["unknown"],"anchor":"absence control"}
+  ],
+  "audit": [
+    {"id":"rules","question":"읽기 전용 검토 요청에서 규칙 파일로 지정한 파일명은? 파일명 하나만.","expected":["CLAUDE.md"],"anchor":"user turn 6"},
+    {"id":"temporary","question":"같은 요청에서 임시 파일 생성 금지의 예로 든 임시 디렉터리 생성 명령 이름은? 명령 이름 하나만.","expected":["mktemp"],"anchor":"user turn 6"},
+    {"id":"prompt","question":"사용자는 복사용 프롬프트를 몇 개 코드 블록에 달라고 했는가? 숫자 하나만.","expected":["1"],"anchor":"user turn 8"},
+    {"id":"unknown","question":"이 대화에서 확인된 제품의 실제 유료 고객 수는? 없으면 unknown.","expected":["unknown"],"anchor":"absence control"}
+  ],
+  "notes": [
+    {"id":"file","question":"이어 쓰기를 요청한 Markdown 파일명은? 파일명 하나만.","expected":["notes.md"],"anchor":"run 1 input"},
+    {"id":"first","question":"도구 읽기 결과에서 첫 번째 목록 항목의 단어는? 단어 하나만.","expected":["alpha"],"anchor":"run 2 ToolResult"},
+    {"id":"last","question":"마지막 입력에서 추가하라고 요청한 단어는? 단어 하나만.","expected":["zeta"],"anchor":"run 3 input"},
+    {"id":"unknown","question":"이 파일이 원격 저장소에 push된 커밋 해시는? 없으면 unknown.","expected":["unknown"],"anchor":"absence control"}
+  ],
+  "relay": [
+    {"id":"file","question":"이어 쓰는 파일명은? 파일명 하나만.","expected":["relay.txt"],"anchor":"run 1 input"},
+    {"id":"first","question":"실제 파일 읽기 결과의 첫째 줄은? 줄 내용만.","expected":["CLAUDE_FINAL_622"],"anchor":"run 2 ToolResult"},
+    {"id":"second","question":"실제 파일 읽기 결과의 둘째 줄은? 줄 내용만.","expected":["CODEX_FINAL_622"],"anchor":"run 2 ToolResult"},
+    {"id":"unknown","question":"이 파일을 배포한 서비스 URL은? 없으면 unknown.","expected":["unknown"],"anchor":"absence control"}
+  ],
+  "interruption": [
+    {"id":"first_read","question":"첫 실행에서 AGENTS.md 읽기는 파일 없음과 성공 중 무엇이었나? missing 또는 success.","expected":["missing"],"anchor":"run 1 ToolResult"},
+    {"id":"marker","question":"사용자가 마지막 문단에 넣으라고 한 마커는? 식별자 하나만.","expected":["INTERRUPTED_622"],"anchor":"run 1 input"},
+    {"id":"backup","question":"실제 읽은 AGENTS.md에서 이관 직전 백업을 며칠 보관하는가? 숫자 하나만.","expected":["14"],"anchor":"run 2 ToolResult"},
+    {"id":"unknown","question":"이 실행에서 확인된 프로덕션 데이터베이스 비밀번호는? 없으면 unknown.","expected":["unknown"],"anchor":"absence control"}
+  ]
+}

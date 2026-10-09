@@ -25,7 +25,8 @@ def main() -> None:
     query = next(q for q in queries if q["id"] == "learning-59")
     (target / "queries.json").write_text(json.dumps([query], ensure_ascii=False))
     binaries = {
-        "baseline": PRIVATE / "baseline/engine-tests",
+        "baseline": PRIVATE
+        / os.environ.get("SATURN_RECALL_LOAD_BASELINE", "baseline/engine-tests"),
         "candidate": PRIVATE
         / os.environ.get("SATURN_RECALL_LOAD_BINARY", "current-engine-tests"),
     }

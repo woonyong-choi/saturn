@@ -77,18 +77,6 @@ pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
         takes_provider: false,
     },
     CommandSpec {
-        path: "train",
-        description: "판단 모델 학습",
-        values: &[],
-        takes_provider: false,
-    },
-    CommandSpec {
-        path: "router use",
-        description: "판단 모델 버전",
-        values: &[],
-        takes_provider: false,
-    },
-    CommandSpec {
         path: "record",
         description: "판단 기록 켜기와 끄기",
         values: &["on", "off"],
@@ -257,13 +245,6 @@ pub(crate) enum SlashCommand {
     Usage,
     /// `/prune`. 지울 채팅을 미리 보이는 창을 연다.
     Prune,
-    /// 채점 후보가 200건 미만이면 engine이 거절한다.
-    Train {
-        reset_thresholds: bool,
-        from: Option<String>,
-    },
-    /// `/router use`
-    RouterVersion,
     /// 목록에 없는 provider 명령. 원문 그대로 메인 에이전트 provider에 넘긴다. TODO(#41): 비메인 provider 명령 처리
     Provider { line: String },
 }
@@ -318,8 +299,6 @@ pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         "quit" => no_args("quit", &args, SlashCommand::Quit)?,
         "usage" => no_args("usage", &args, SlashCommand::Usage)?,
         "prune" => no_args("prune", &args, SlashCommand::Prune)?,
-        "train" => parse_train(&args)?,
-        "router" => parse_router(&args)?,
         "" => {
             return Err(CommandError::Unknown {
                 name: String::new(),
@@ -489,39 +468,6 @@ fn parse_feedback(args: &[&str]) -> Result<bool, CommandError> {
     }
 }
 
-// cost: time O(a), heap O(a), stack O(1)
-// vars: a = 인자 글자 수
-// basis: estimate
-fn parse_train(args: &[&str]) -> Result<SlashCommand, CommandError> {
-    let mut reset_thresholds = false;
-    let mut from = None;
-    let mut rest = args.iter();
-    while let Some(argument) = rest.next() {
-        match *argument {
-            "--reset-thresholds" => reset_thresholds = true,
-            "--from" => match rest.next() {
-                Some(version) => from = Some((*version).to_string()),
-                None => return Err(invalid("train", argument)),
-            },
-            _ => return Err(invalid("train", argument)),
-        }
-    }
-    Ok(SlashCommand::Train {
-        reset_thresholds,
-        from,
-    })
-}
-
-// cost: time O(a), heap O(a), stack O(1)
-// vars: a = 인자 글자 수(오류 문구를 만들 때만)
-// basis: estimate
-fn parse_router(args: &[&str]) -> Result<SlashCommand, CommandError> {
-    match args {
-        ["use"] => Ok(SlashCommand::RouterVersion),
-        _ => Err(invalid("router", &args.join(" "))),
-    }
-}
-
 fn invalid(command: &'static str, argument: &str) -> CommandError {
     CommandError::InvalidArgument {
         command,
@@ -661,19 +607,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_train_flags_are_read() {
-        let parsed = parse("/train --reset-thresholds --from v2").unwrap();
-
-        assert_eq!(
-            parsed,
-            Some(SlashCommand::Train {
-                reset_thresholds: true,
-                from: Some("v2".to_string())
-            })
-        );
-    }
-
-    #[test]
     fn parse_add_dir_keeps_the_rest_of_the_line_as_the_path() {
         assert_eq!(
             parse("/add-dir ~/my docs/ ").unwrap(),
@@ -714,11 +647,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_router_use_and_feedback() {
-        assert_eq!(
-            parse("/router use").unwrap(),
-            Some(SlashCommand::RouterVersion)
-        );
+    fn parse_feedback() {
         assert_eq!(
             parse("/feedback 2").unwrap(),
             Some(SlashCommand::Feedback { correct: false })

@@ -13,6 +13,7 @@ mod commands;
 mod conflict_steer;
 mod constraint_handoff;
 mod constraints;
+mod context_recall;
 mod crash_recovery;
 mod decision;
 mod deliver;

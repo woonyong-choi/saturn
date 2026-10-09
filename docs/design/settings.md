@@ -109,10 +109,10 @@
 | `permission.shell`, `permission.edit`, `permission.read`, `permission.mcp`, `permission.subagent` | `allow`, `ask`, `deny` 또는 패턴 → 값 표 | 모드를 따름 |
 | `model.default` | `<provider>/<model>` 문자열 | 없음. 처음 고르기 창이 사용자 설정 파일에 쓴다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)) |
 | `model.mode` | `auto`, `manual` | `auto` |
-| `router.mode` | `jev`, `saturn`, `collect` | `jev` |
+| `router.mode` | `jev`, `saturn` | `jev` |
 | `router.endpoint` | 문자열 | `https://api.typesafe.ai` |
 | `router.model` | 문자열 | `jev-1.13.0` |
-| `router.local.endpoint`, `router.local.version` | 문자열 | 없음 |
+| `router.local.endpoint`, `router.local.version` | 문자열 | 없음. endpoint는 HTTPS 루프백만 허용하고 TLS 인증서를 검증한다 |
 | `router.skip_check` | 참·거짓(도움말에 없음) | 없음 |
 | `router.key.info` | `source`(`stored`, `env`, `command`), `last4` | 없음 |
 | `router.key.command` | 문자열 배열 | 없음 |

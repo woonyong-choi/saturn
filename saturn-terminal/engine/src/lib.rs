@@ -1,9 +1,6 @@
 //! Saturn engine: `saturn-core` 규칙을 실제 연결과 조립해 화면 없이 돌리는 상주 프로세스.
 //! 설계: docs/architecture.md
 
-// TODO(#74): 뼈대 단계라 본문이 `todo!`인 함수의 인자가 쓰이지 않는다. 구현 이슈가 모두 닫히면 이 허용을 지운다
-#![allow(unused_variables, dead_code)]
-
 pub mod engine_log;
 pub(crate) mod processes;
 pub(crate) mod providers;
@@ -12,7 +9,6 @@ pub(crate) mod rpc;
 pub(crate) mod secrets;
 pub(crate) mod settings;
 pub(crate) mod store;
-pub(crate) mod training;
 
 pub use processes::Supervisor;
 pub use providers::{
@@ -87,7 +83,6 @@ use crate::rpc::{ClientId, RpcError, RpcServer};
 use crate::secrets::{KeyInput, SecretsError};
 use crate::settings::{FolderTrustPrompt, SettingsError, SettingsManager};
 use crate::store::{MigrationNotice, Store, StoreError};
-use crate::training::{TrainPlan, TrainingError};
 
 /// 초안. router 키를 기다리는 동안 거절한 요청의 오류 번호(JSON-RPC 서버 오류 범위).
 pub const ROUTER_KEY_REQUIRED: i32 = -32001;
@@ -172,8 +167,6 @@ pub enum EngineError {
     Process(#[from] ProcessError),
     #[error("failed to listen for SIGTERM")]
     Signal(#[source] std::io::Error),
-    #[error("training failed")]
-    Training(#[from] TrainingError),
 }
 
 impl EngineError {
@@ -215,16 +208,11 @@ impl EngineError {
                 RoutersError::DisallowedEndpoint { .. }
                 | RoutersError::NotConfigured { .. }
                 | RoutersError::Settings(_),
-            )
-            | Self::Training(TrainingError::NoGrader) => Some(ErrorKind::Config),
-            Self::Store(StoreError::NotFound { .. })
-            | Self::PrunePlanUnknown
-            | Self::Training(TrainingError::UnknownVersion { .. }) => Some(ErrorKind::NotFound),
-            Self::Training(TrainingError::NotEnough { .. }) => Some(ErrorKind::RetryLater),
-            Self::NoProvider
-            | Self::ChildRejected { .. }
-            | Self::Provider(_)
-            | Self::Training(TrainingError::Grader(_) | TrainingError::Trainer { .. }) => {
+            ) => Some(ErrorKind::Config),
+            Self::Store(StoreError::NotFound { .. }) | Self::PrunePlanUnknown => {
+                Some(ErrorKind::NotFound)
+            }
+            Self::NoProvider | Self::ChildRejected { .. } | Self::Provider(_) => {
                 Some(ErrorKind::Failed)
             }
             _ => None,
@@ -384,8 +372,6 @@ pub struct Engine {
     presence: Presence,
     /// 백그라운드에서 모든 작업이 끝난 뒤 engine이 끝나기까지 기다리는 시간.
     idle_grace: Duration,
-    /// `ConfirmTrain`을 기다린다.
-    pending_train: Option<TrainPlan>,
     /// `Shutdown`을 받았다. 요청 처리 루프는 붙은 TUI에 알린 뒤 끝난다.
     upgrade_requested: bool,
     /// 종료 신호(`SIGTERM`)를 받았다. `serve`가 끝나고 `shutdown`이 provider 프로세스 묶음을 정리한다.
@@ -582,16 +568,6 @@ mod error_kind_tests {
             ),
             (EngineError::NoRetention, Some(ErrorKind::Config)),
             (EngineError::PrunePlanUnknown, Some(ErrorKind::NotFound)),
-            (
-                EngineError::Training(TrainingError::NotEnough { have: 1, need: 200 }),
-                Some(ErrorKind::RetryLater),
-            ),
-            (
-                EngineError::Training(TrainingError::UnknownVersion {
-                    version: "v9".to_owned(),
-                }),
-                Some(ErrorKind::NotFound),
-            ),
             (EngineError::NoProvider, Some(ErrorKind::Failed)),
             (EngineError::InvalidLabel { what: "name" }, None),
         ];

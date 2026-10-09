@@ -21,7 +21,6 @@ use crate::view::composer::Composer;
 use crate::view::model_picker::ModelPicker;
 use crate::view::popup::{self, Popup, PopupItem, PopupKind, PopupSuppress};
 use crate::view::prune_window::PruneWindow;
-use crate::view::router_version::RouterVersionScreen;
 use crate::view::task_list::TaskList;
 use crate::view::transcript::TranscriptCell;
 use crate::view::usage::{UsageScreen, usage_request};
@@ -440,20 +439,6 @@ impl App {
             SlashCommand::Prune => {
                 self.open_window(Window::Prune(PruneWindow::default()));
                 Some(prune_preview())
-            }
-            SlashCommand::Train {
-                reset_thresholds,
-                from,
-            } => {
-                self.train_reset = reset_thresholds;
-                Some(Request::Train {
-                    reset_thresholds,
-                    from,
-                })
-            }
-            SlashCommand::RouterVersion => {
-                self.open_window(Window::RouterVersion(RouterVersionScreen::default()));
-                Some(Request::ListRouterVersions)
             }
             SlashCommand::Model { provider } => {
                 let mut picker = ModelPicker::new(provider, self.chat.pinned_model.clone());

@@ -17,12 +17,10 @@ pub(crate) mod popup;
 pub(crate) mod prune_window;
 pub(crate) mod resume_prompt;
 pub(crate) mod router_key_prompt;
-pub(crate) mod router_version;
 pub(crate) mod start_screen;
 pub(crate) mod status_board;
 pub(crate) mod stop_confirm;
 pub(crate) mod task_list;
-pub(crate) mod train_confirm;
 pub(crate) mod transcript;
 pub mod usage;
 

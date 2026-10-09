@@ -3,6 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
+| 실행 범위 | 빠른 조정과 결과 신호 기록만 연결됨. 아래 `/train`과 router 버전 화면은 구현 전 설계이며 현재 CLI·TUI 명령 목록에 없음 |
 | 관련 결정 | [판단 기록은 로컬에 쌓고 동의한 레코드만 서버로 올린다](../decisions/2026-09-29-local-first-judgment-collection.md), [판단 규격은 Saturn이 정하고 router는 중립 이름과 출처로 기록한다](../decisions/2026-09-29-vendor-neutral-router-spec.md) |
 
 ## 요약
@@ -203,7 +204,7 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 | 느린 조정은 되돌릴 수 없는 행동의 최저값 아래로 중심값을 내리지 않는다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_keeps_center_within_irreversible_floor` |
 | 전체 묻는 빈도는 판단 20번에 1번을 넘지 않는다. | 많은 판단을 흘려 물은 비율이 상한 안인지 확인한다. |
 | 판단 기록마다 router 버전, 기준값, q를 남기고 결과 신호와 물은 답은 생긴 뒤 같은 기록에 채운다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `answer_feedback_records_answer_in_judgment`, `answer_feedback_request_is_answered_through_socket` |
-| `/train`은 판단 기록으로 `Observation` 목록을 만들어 `recenter`에 넘긴다. | `saturn-terminal/engine/src/training/mod.rs`의 `recenter_thresholds_with_enough_recorded_results_moves_center`, `recenter_thresholds_below_min_results_keeps_center`, `recenter_thresholds_ignores_judgments_still_being_observed` |
+| `/train`은 판단 기록으로 `Observation` 목록을 만들어 `recenter`에 넘긴다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 기록 저장과 core의 느린 조정은 각각 테스트하지만 실행 명령은 연결하지 않는다. |
 | `/train`은 채점 안 된 판단이 200건 미만이면 실행하지 않는다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 199건에서 실행을 거절하고 200건에서 시작하는지 확인한다. |
 | 모델 학습은 학습용 라벨 1,000건 이상, 평가용 라벨 200건 이상일 때만 한다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 학습용 999건에서 학습을 건너뛰고 채점과 기준값 조정만 하는지 확인한다. |
 | 품질 게이트를 통과하지 못한 라벨은 학습용과 평가용에 들어가지 않는다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 순서를 바꾼 두 답이 다른 판단이 라벨에서 빠지는지 확인한다. |

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 import concurrent.futures
 import hashlib
 import importlib.util
@@ -15,8 +16,12 @@ import sys
 
 PUBLIC = Path(__file__).resolve().parents[1]
 ROOT = PUBLIC.parents[2]
-PHASE = os.environ.get("SATURN_RECALL_PHASE", "confirmation")
-PRIVATE = ROOT / ".local/experiments/context-recall" / PHASE
+PHASE = os.environ.get("SATURN_RECALL_PHASE", "bounded")
+PRIVATE = Path(
+    os.environ.get(
+        "SATURN_RECALL_HOME", ROOT / ".local/experiments/context-recall" / PHASE
+    )
+)
 BALANCED = PHASE in {"balanced", "bounded"}
 BASE = ROOT / ".local/experiments/real-context-replay/corrected"
 
@@ -234,7 +239,12 @@ def analyze():
             result = (
                 json.loads((folder / "result.json").read_text())
                 if (folder / "result.json").exists()
-                else dict(status="not_run", provider=provider)
+                else dict(
+                    status="interrupted"
+                    if folder.exists() and (PRIVATE / "stopped.json").exists()
+                    else "not_run",
+                    provider=provider,
+                )
             )
             valid = result["status"] == "ok" and result.get("tool_calls", 0) == 0
             if provider == "claude":
@@ -289,7 +299,7 @@ def analyze():
                 else 0,
                 "questions": sum(q["set"] == name for q in qs),
             }
-            for name in {q["set"] for q in qs}
+            for name in sorted({q["set"] for q in qs})
         }
     groups = []
     for provider in ["claude", "codex"]:
@@ -329,7 +339,13 @@ def analyze():
                     reduction=1 - total / full if full else None,
                 )
             )
-    summary = dict(groups=groups, records=records)
+    summary = dict(
+        phase=PHASE,
+        planned_sessions=len(records),
+        sessions_by_status=dict(Counter(r["status"] for r in records)),
+        groups=groups,
+        records=records,
+    )
     output_name = {
         "confirmation": "stopped-summary.json",
         "balanced": "balanced-summary.json",

@@ -6,7 +6,6 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixListener;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
@@ -14,9 +13,7 @@ use saturn_protocol::envelope::{
     ErrorKind, NotificationMessage, Response, ServerMessage, decode_client_line, encode_line,
 };
 use saturn_protocol::ids::{ChatId, InputId, Provider, TaskId, TaskLabel};
-use saturn_protocol::rpc::{
-    Notification, PROTOCOL_VERSION, QueryResult, Request, RouterVersionInfo,
-};
+use saturn_protocol::rpc::{Notification, PROTOCOL_VERSION, QueryResult, Request};
 use saturn_protocol::state::{Disposition, InputState, TaskState};
 
 /// 요청 하나에 대한 가짜 engine의 행동.
@@ -304,24 +301,6 @@ fn continue_without_a_chat_in_the_folder_exits_sixty_six() {
 }
 
 #[test]
-fn unknown_router_version_exits_sixty_six() {
-    let run = run_with_engine(&["router", "use", "v9", "--yes"], |request| match request {
-        Request::ListRouterVersions => Act::Query(QueryResult::RouterVersions {
-            current: "v1".to_owned(),
-            versions: vec![RouterVersionInfo {
-                version: "v1".to_owned(),
-                router: "jev".to_owned(),
-                ece: None,
-                questions: Vec::new(),
-            }],
-        }),
-        other => panic!("unexpected {other:?}"),
-    });
-
-    assert_eq!(run.code, Some(66), "{}", run.stderr);
-}
-
-#[test]
 fn engine_that_hangs_up_exits_sixty_nine() {
     let run = run_with_engine(&["usage"], |_| Act::Hangup);
 
@@ -339,10 +318,8 @@ fn engine_internal_error_exits_seventy() {
 }
 
 #[test]
-fn training_without_enough_samples_exits_seventy_five() {
-    let run = run_with_engine(&["router", "train", "--yes"], |_| {
-        fail(INTERNAL, ErrorKind::RetryLater)
-    });
+fn retry_later_exits_seventy_five() {
+    let run = run_with_engine(&["usage"], |_| fail(INTERNAL, ErrorKind::RetryLater));
 
     assert_eq!(run.code, Some(75), "{}", run.stderr);
 }
@@ -388,32 +365,6 @@ fn expected_failure_exits_one() {
     });
 
     assert_eq!(run.code, Some(1), "{}", run.stderr);
-}
-
-#[test]
-fn training_without_a_terminal_to_confirm_exits_two_and_cancels() {
-    let cancelled = Arc::new(AtomicBool::new(false));
-    let seen = Arc::clone(&cancelled);
-    let run = run_with_engine(&["router", "train"], move |request| match request {
-        Request::Train { .. } => Act::Ok(vec![Notification::TrainPreview {
-            candidates: 250,
-            grader: "grader-a".to_owned(),
-            estimated_tokens: 1,
-            threshold_targets: Vec::new(),
-            retrain_model: false,
-        }]),
-        Request::ConfirmTrain { proceed: false } => {
-            seen.store(true, Ordering::SeqCst);
-            Act::Ok(Vec::new())
-        }
-        other => panic!("unexpected {other:?}"),
-    });
-
-    assert_eq!(run.code, Some(2), "{}", run.stderr);
-    assert!(
-        cancelled.load(Ordering::SeqCst),
-        "no cancel request arrived"
-    );
 }
 
 /// engine가 입력 하나를 접수해 작업 A로 실행하고 `end`로 끝내는 순서. `RequestSummary`는 보내지 않는다.

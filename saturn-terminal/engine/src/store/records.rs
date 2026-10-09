@@ -18,8 +18,10 @@ use super::{Store, StoreError, enum_text, from_sql_int, parse_enum, to_millis, t
 mod rows;
 mod runs;
 
+#[cfg(test)]
+pub(in crate::store) use rows::unknown_value;
 pub(crate) use rows::{ensure_found, not_found};
-pub(in crate::store) use rows::{parse_run_end, session_from_row, unknown_value};
+pub(in crate::store) use rows::{parse_run_end, session_from_row};
 
 /// 이 밖의 입력은 열린 입력이다.
 pub(crate) const FINAL_INPUT_STATES: &str = "('Applied', 'Rejected', 'Cancelled')";
@@ -68,8 +70,8 @@ pub(crate) struct RunRecord {
     pub session: SessionId,
     /// `allows_auto_resume()`이 참일 때만 자동 재개한다.
     pub effect_scope: EffectScope,
-    pub started_at: SystemTime,
     /// 끝나지 않았으면 `None`(열린 실행).
+    #[cfg(test)]
     pub end: Option<RunEnd>,
 }
 
@@ -84,8 +86,8 @@ pub(crate) struct UsageRow {
     /// 그 실행의 provider.
     pub provider: Provider,
     pub report: UsageReport,
-    pub at: SystemTime,
     /// 중간 보고가 빠져 이 값의 차이가 여러 턴에 걸친다. `/usage` 응답은 protocol `UsageRow::turns`로 턴 수를 싣는다.
+    #[cfg(test)]
     pub spans_turns: bool,
 }
 

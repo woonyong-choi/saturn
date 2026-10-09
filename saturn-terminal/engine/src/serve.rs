@@ -88,7 +88,7 @@ impl Engine {
 
     pub(super) async fn handle_event(&mut self, event: RpcEvent) -> Result<(), EngineError> {
         match event {
-            RpcEvent::Connected(_) => {}
+            RpcEvent::Connected(client) => log_connection(client),
             RpcEvent::Request(client, id, request) => {
                 self.handle_request(client, id, request).await?;
             }
@@ -151,7 +151,6 @@ impl Engine {
             Request::LatestChat { folder } => self.latest_chat_result(&folder).await?,
             Request::ListChats { folder } => self.chat_list_result(folder.as_deref()).await?,
             Request::ListTasks => self.task_list_result().await?,
-            Request::ListRouterVersions => return Err(unsupported("ListRouterVersions")),
             Request::Prune { yes, plan, all } => {
                 self.prune_records(client, (yes, plan, all)).await?
             }
@@ -314,10 +313,6 @@ impl Engine {
                 self.set_default_model(client, chat, &model).await
             }
             Request::SetModelMode { chat, mode } => self.set_model_mode(client, chat, mode).await,
-            // TODO(#91): 학습과 router 버전
-            Request::Train { .. } => Err(unsupported("Train")),
-            Request::ConfirmTrain { .. } => Err(unsupported("ConfirmTrain")),
-            Request::UseRouterVersion { .. } => Err(unsupported("UseRouterVersion")),
             Request::ExportJudgments { path } => self.export_judgments(&path).await,
             Request::LoadHistory { .. }
             | Request::PrepareExit { .. }
@@ -326,7 +321,6 @@ impl Engine {
             | Request::ListChats { .. }
             | Request::ListTasks
             | Request::ListExtensions
-            | Request::ListRouterVersions
             | Request::Prune { .. } => unreachable!("query requests are answered by dispatch"),
         }
     }
@@ -356,4 +350,8 @@ impl Engine {
         tracing::info!(count, "judgments exported");
         Ok(())
     }
+}
+
+fn log_connection(client: ClientId) {
+    tracing::debug!(client = client.0, "client connected");
 }

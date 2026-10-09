@@ -31,15 +31,12 @@ pub const TOKEN: &str = "Token";
 
 // 상태판 판단 줄, 학습 줄
 pub const JUDGING: &str = "판단 중";
-pub const TRAINING: &str = "학습";
 
 // 상태판 줄 하나 뒤에 붙는 나머지 개수. `{n}`은 개수다.
 pub const BOARD_MORE_RUNNING: &str = "실행 {n}개 더";
 pub const BOARD_RUNNING: &str = "실행 {n}";
 pub const BOARD_MORE_JUDGING: &str = "판단 {n}개 더";
 pub const BOARD_JUDGING: &str = "판단 {n}";
-pub const BOARD_MORE_TRAINING: &str = "학습 {n}개 더";
-pub const BOARD_TRAINING: &str = "학습 {n}";
 pub const BOARD_MORE_QUEUED: &str = "대기 {n}개 더";
 pub const BOARD_QUEUED: &str = "대기 {n}";
 pub const BOARD_MORE_HELD: &str = "보류 {n}개 더";
@@ -139,8 +136,6 @@ pub const FEEDBACK_DISMISS: &str = "닫기";
 pub const CORRECTION_QUESTION: &str = "바로 새 작업으로 실행할까요?";
 pub const BUTTON_RUN: &str = "[실행]";
 pub const BUTTON_KEEP: &str = "[그대로]";
-pub const TRAIN_SHORT: &str = "채점할 판단";
-pub const TRAIN_SHORT_SUFFIX: &str = "쌓이면 실행할 수 있습니다";
 pub const PASTED: &str = "붙여넣은 내용";
 pub const CHARS_SUFFIX: &str = "자";
 pub const COUNT_SUFFIX: &str = "건";
@@ -154,7 +149,6 @@ pub const CONTEXT_UNKNOWN: &str = "맥락 미확인";
 pub const RESUME_ALL: &str = "모두 이어서";
 pub const RESUME_PICK: &str = "골라서 이어서";
 pub const RESUME_LEAVE: &str = "그대로 두기";
-pub const TRAIN_RUN: &str = "실행";
 pub const PERMISSION_ALLOW_ONCE: &str = "이번만 허용";
 pub const PERMISSION_ALLOW_ALWAYS: &str = "항상 허용";
 pub const PERMISSION_DENY: &str = "거부";
@@ -300,21 +294,6 @@ pub const USAGE_RANGE_CHAT: &str = "현재 채팅";
 pub const USAGE_RANGE_DAY: &str = "최근 24시간";
 pub const USAGE_RANGE_WEEK: &str = "최근 7일";
 pub const USAGE_HELP: &str = "d 최근 24시간 · w 최근 7일 · Enter 자세히 · Esc 닫기";
-pub const ROUTER_VERSION_TITLE: &str = "라우터 버전";
-pub const ROUTER_VERSION_ACTIVE: &str = "사용 중";
-pub const ROUTER_VERSION_QUESTION: &str = "질문";
-pub const ROUTER_VERSION_TARGET: &str = "목표 틀림 비율";
-pub const ROUTER_VERSION_THRESHOLD: &str = "기준값";
-pub const ROUTER_VERSION_RECENT: &str = "최근 200건 틀림";
-pub const ROUTER_VERSION_JUDGMENTS: &str = "판단 수";
-pub const ROUTER_VERSION_CONFIRM: &str = "이 버전을 쓸까요? u 또는 Enter 확인 · Esc 취소";
-pub const ROUTER_VERSION_HINT: &str = "Enter 상세 · r 영점 복귀 · t 다시 학습 · u 사용 · Esc 닫기";
-pub const TRAIN_TITLE: &str = "판단 모델 학습";
-pub const TRAIN_CANDIDATES: &str = "채점 후보";
-pub const TRAIN_GRADER: &str = "채점 모델";
-pub const TRAIN_TOKENS: &str = "예상 토큰";
-pub const TRAIN_TARGETS: &str = "기준값 조정 대상";
-pub const TRAIN_RETRAIN: &str = "모델 추가 학습";
 pub const MODEL_TITLE: &str = "모델 고르기";
 pub const MODEL_LOADING: &str = "모델 목록을 불러오는 중";
 pub const MODEL_EMPTY: &str = "고를 수 있는 모델이 없습니다";
@@ -378,22 +357,7 @@ pub const CLI_SKIP_ACTIVE_SESSION: &str = "열린 session";
 pub const CLI_SKIP_WAITING_SESSION: &str = "보관한 session";
 pub const CLI_SKIP_ATTACHED: &str = "TUI에 붙어 있음";
 pub const CLI_SKIP_USED_SINCE_PREVIEW: &str = "미리본 뒤 다시 쓰임";
-pub const CLI_ROUTER_VERSION_NOT_FOUND: &str =
-    "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})";
-pub const CLI_ROUTER_VERSION_ALREADY: &str = "이미 쓰는 router 버전입니다: {version}";
-pub const CLI_ROUTER_VERSION_PROMPT: &str =
-    "다음 router 버전을 쓸까요? {version} (현재: {current})";
-pub const CLI_ROUTER_VERSION_NOT_CONFIRMED: &str =
-    "확인하지 않았습니다 · router 버전은 {current} 그대로입니다";
-pub const CLI_ROUTER_VERSION_NOW: &str = "router 버전을 바꿨습니다: {version}";
-pub const CLI_NO_ROUTER_VERSIONS: &str = "engine이 router 버전 목록 없이 답했습니다";
 pub const CLI_NO_USAGE_TABLE: &str = "engine이 사용량 표 없이 답했습니다";
-pub const CLI_TRAIN_ACCEPTED: &str = "학습 요청을 받았습니다";
-pub const CLI_TRAIN_PROMPT: &str = "학습을 실행할까요?";
-/// `{stage}`는 engine이 준 단계 이름.
-pub const CLI_TRAIN_PROGRESS: &str = "{stage} · 채점 {labeled}건 · {elapsed} · 토큰 {tokens}";
-pub const CLI_TRAIN_FINISHED: &str = "학습을 마쳤습니다";
-pub const CLI_TRAIN_CANCELLED: &str = "학습을 취소했습니다";
 pub const CLI_NO_CHAT_TO_CONTINUE: &str =
     "이 폴더에 이어 열 채팅이 없습니다 · saturn으로 새 채팅을 시작하세요";
 pub const CLI_NO_LATEST_CHAT_ANSWER: &str = "engine이 최근 채팅 없이 답했습니다";
@@ -434,8 +398,6 @@ pub const CLI_ENGINE_UPGRADE_FAILED: &str =
 pub const CLI_LOG_PATH: &str = "(로그: {path})";
 pub const CLI_ARGS_CONFLICT: &str =
     "--continue, --resume, --add-dir은 대화 화면을 여는 인자라 하위 명령과 함께 쓸 수 없습니다";
-pub const CLI_ROUTER_VERSION_FORMAT: &str =
-    "router 버전은 `v3`처럼 v와 1 이상 정수여야 합니다: `{text}`";
 pub const CLI_RESUME_VALUE: &str = "채팅 id(숫자)나 `all`이어야 합니다: `{text}`";
 pub const CLI_CONFIG_FORMAT: &str = "KEY=VALUE 형식이어야 합니다: `{text}`";
 pub const CLI_CONFIG_EMPTY_KEY: &str = "키가 비어 있습니다: `{text}`";

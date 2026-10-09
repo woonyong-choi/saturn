@@ -4,7 +4,6 @@
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
-use std::sync::Arc;
 
 use saturn_core::permission::Rule;
 use saturn_core::providers::{
@@ -15,16 +14,13 @@ use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId};
 use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ExtensionPartKind, Injectability, ModelInfo, PermissionAnswer};
 
-use super::{AppliedSettings, LaunchSpec, PermissionLaunch};
+use super::{LaunchSpec, PermissionLaunch};
 use crate::processes::{ProcessGroupId, Supervisor};
 
 /// engine이 지원하는 Saturn 인터페이스 판. 어댑터가 알린 판이 이 값과 다르면 등록하지 않는다.
 pub(crate) const INTERFACE_VERSION: u32 = 1;
 
 pub(crate) type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
-
-/// 열린 session의 적용값을 읽는 함수. 읽기 작업이 갱신하는 값이라 부를 때마다 읽는다.
-pub(crate) type AppliedReader = Arc<dyn Fn() -> Option<AppliedSettings> + Send + Sync>;
 
 /// 어댑터가 구현하는 동작 중 선택 항목. 빠진 항목은 구현하지 않은 것으로 보고 공통 코드가 그 동작을 요청하지 않는다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -191,23 +187,13 @@ fn parse_version(output: &str) -> Option<String> {
     Some(word.unwrap_or(line).to_owned())
 }
 
-/// 어댑터 연결 하나의 동작. `ProviderClient`에 프로세스 묶음, 적용값, 줄 세운 입력 전송을 더한다.
+/// 어댑터 연결 하나의 동작. `ProviderClient`에 프로세스 묶음과 줄 세운 입력 전송을 더한다.
 pub(crate) trait AdapterConnection: ProviderClient {
     /// 그 session을 실행하는 프로세스 묶음. 모르는 session이면 `None`.
     fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId>;
 
     /// 모든 session이 프로세스 묶음 하나를 같이 쓰는 어댑터의 그 묶음. 연결을 통째로 닫을 때 쓴다.
     fn shared_group(&self) -> Option<ProcessGroupId> {
-        None
-    }
-
-    /// 적용값을 받기 전이면 `None`.
-    fn applied_settings(&self, _session: &ProviderSessionId) -> Option<AppliedSettings> {
-        None
-    }
-
-    /// 연결 작업 밖에서 동기로 적용값을 읽는 함수. 알 수 없으면 `None`.
-    fn applied_reader(&self, _session: &ProviderSessionId) -> Option<AppliedReader> {
         None
     }
 
@@ -264,8 +250,6 @@ pub(crate) trait DynConnection: Send {
     fn commands(&self) -> Vec<ProviderCommand>;
     fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId>;
     fn shared_group(&self) -> Option<ProcessGroupId>;
-    fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings>;
-    fn applied_reader(&self, session: &ProviderSessionId) -> Option<AppliedReader>;
     fn start_queued_turn(&mut self, agent: AgentId) -> BoxFuture<'_, ()>;
 }
 
@@ -357,14 +341,6 @@ impl<T: AdapterConnection> DynConnection for T {
         AdapterConnection::shared_group(self)
     }
 
-    fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
-        AdapterConnection::applied_settings(self, session)
-    }
-
-    fn applied_reader(&self, session: &ProviderSessionId) -> Option<AppliedReader> {
-        AdapterConnection::applied_reader(self, session)
-    }
-
     fn start_queued_turn(&mut self, agent: AgentId) -> BoxFuture<'_, ()> {
         Box::pin(AdapterConnection::start_queued_turn(self, agent))
     }
@@ -403,14 +379,6 @@ impl ProviderConnection {
 
     pub(crate) fn shared_group(&self) -> Option<ProcessGroupId> {
         self.inner.shared_group()
-    }
-
-    pub(crate) fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
-        self.inner.applied_settings(session)
-    }
-
-    pub(crate) fn applied_reader(&self, session: &ProviderSessionId) -> Option<AppliedReader> {
-        self.inner.applied_reader(session)
     }
 
     pub(crate) async fn start_queued_turn(&mut self, agent: AgentId) {

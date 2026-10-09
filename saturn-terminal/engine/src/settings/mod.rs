@@ -24,7 +24,9 @@ use saturn_protocol::rpc::ModelMode;
 use crate::providers::ContextDefaults;
 use saturn_protocol::state::OnExit;
 
-use crate::secrets::{KeyInfo, StorageMode};
+#[cfg(test)]
+use crate::secrets::KeyInfo;
+use crate::secrets::StorageMode;
 use crate::store::{RetentionPolicy, StoreError, sha256_hex};
 
 pub(crate) use layers::default_layer;
@@ -177,6 +179,7 @@ impl Settings {
     }
 
     /// 출처와 끝 4자리만 담는다.
+    #[cfg(test)]
     pub(crate) fn key_info(&self) -> Option<KeyInfo> {
         serde_json::from_value(self.get("router.key.info")?.clone()).ok()
     }
@@ -199,11 +202,13 @@ impl Settings {
     }
 
     /// 사용자 전용.
+    #[cfg(test)]
     pub(crate) fn grading_model(&self) -> Option<&str> {
         self.get("grading.model")?.as_str()
     }
 
     /// 사용자 전용. 기본 거짓.
+    #[cfg(test)]
     pub(crate) fn share_with_server(&self) -> bool {
         self.lookup("consent.share_with_server")
             .and_then(Value::as_bool)

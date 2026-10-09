@@ -19,9 +19,7 @@ use super::{App, Effect, Window};
 use crate::client::Rejection;
 use crate::i18n;
 use crate::keymap::Keymap;
-use crate::state::{
-    Change, ChatState, ContextSize, FeedbackPrompt, InputUpdate, TaskUpdate, TrainingProgress,
-};
+use crate::state::{Change, ChatState, ContextSize, FeedbackPrompt, InputUpdate, TaskUpdate};
 use crate::view::constraint_ask::ConstraintAsk;
 use crate::view::exit_confirm::ExitConfirm;
 use crate::view::folder_trust::{FolderTrust, TrustChoice};
@@ -29,11 +27,9 @@ use crate::view::live_area::LiveArea;
 use crate::view::permission::PermissionRequest;
 use crate::view::resume_prompt::ResumePrompt;
 use crate::view::router_key_prompt::RouterKeyPrompt;
-use crate::view::router_version::RouterVersionRow;
 use crate::view::start_screen::StartInfo;
 use crate::view::stop_confirm::StopConfirm;
 use crate::view::task_list::ChatGroup;
-use crate::view::train_confirm::{TrainChoice, TrainConfirm};
 use crate::view::transcript::{TranscriptCell, delivery_badge, echo_cell, result_cell};
 use crate::view::usage::UsageTable;
 
@@ -190,15 +186,6 @@ impl App {
                     picker.load(models);
                 }
             }
-            QueryResult::RouterVersions { current, versions } => {
-                if let Some(Window::RouterVersion(screen)) = &mut self.window {
-                    screen.rows = versions
-                        .into_iter()
-                        .map(|info| RouterVersionRow::from_info(info, &current))
-                        .collect();
-                    screen.selected = screen.selected.min(screen.rows.len().saturating_sub(1));
-                }
-            }
             // TUI는 채팅 목록과 폴더의 최근 채팅을 묻지 않는다. 그런 조회는 `cli`가 붙기 전에 쓴다
             QueryResult::LatestChat { .. } | QueryResult::Chats { .. } => {}
         }
@@ -266,34 +253,6 @@ impl App {
 
     fn on_progress_notification(&mut self, notification: Notification, now: Instant) {
         match notification {
-            Notification::TrainPreview {
-                candidates,
-                grader,
-                estimated_tokens,
-                threshold_targets,
-                retrain_model,
-            } => self.open_window(Window::TrainConfirm(TrainConfirm {
-                candidates,
-                grading_model: grader,
-                estimated_tokens,
-                threshold_targets,
-                fine_tune: retrain_model,
-                reset_thresholds: self.train_reset,
-                selected: TrainChoice::Run,
-            })),
-            Notification::TrainProgress {
-                stage,
-                labeled,
-                elapsed_ms,
-                tokens,
-            } => {
-                self.chat.training = Some(TrainingProgress {
-                    stage,
-                    graded: labeled,
-                    elapsed: Duration::from_millis(elapsed_ms),
-                    tokens,
-                });
-            }
             Notification::TaskEvent { task, event } => self.on_task_event(task, event, now),
             Notification::ChatNotice { chat, task, notice } => {
                 self.on_chat_notice(chat, task, notice);
