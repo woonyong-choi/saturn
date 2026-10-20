@@ -32,8 +32,8 @@ The defaults are manual input handling and provider compaction. Provider switche
 
 1. You run `saturn` in a repository and type a request. A background engine process stores the input in a local SQLite database before it sends anything to Codex or Claude Code.
 2. While the agent works, you type a follow-up. The default manual path queues inputs in order without calling a router. An explicitly selected automatic mode can ask the router to judge how inputs relate.
-3. The provider handles compaction within its own session by default. When you switch providers, the new session gets a packet with the whole recorded conversation, open items, and recent tool records that fit the budget.
-4. You switch the chat from Claude Code to Codex. A chat is the conversation you see, and provider sessions open and close behind it. The new session receives only what changed since it last saw the chat.
+3. The provider handles compaction within its own session by default. When a provider switch opens a new session, it receives a packet containing the whole recorded conversation, open items, and recent tool records that fit the budget.
+4. You switch the chat from Claude Code to Codex. A chat is the conversation you see, and provider sessions open and close behind it. When an archived session resumes, it receives only changes from other sessions since its last synchronized record.
 5. You close the terminal. The engine keeps processing the inputs you already sent, and you can attach again later.
 6. A provider asks to run a command or edit a file. Saturn applies its own permission rules instead of the provider settings, and shows an approval prompt only when a rule says to ask.
 

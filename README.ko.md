@@ -32,8 +32,8 @@ Codex와 Claude Code를 함께 쓰는 개발자는 provider마다 session과 압
 
 1. 저장소에서 `saturn`을 실행하고 요청을 입력합니다. 뒤에서 도는 engine 프로세스가 Codex나 Claude Code에 보내기 전에 입력을 로컬 SQLite 데이터베이스에 저장합니다.
 2. 에이전트가 일하는 동안 이어지는 요청을 입력합니다. 기본 수동 경로에서는 router를 부르지 않고 입력을 순서대로 전달합니다. 자동 판단 모드를 명시적으로 선택했을 때만 router가 관계를 판단합니다.
-3. 같은 provider session의 맥락 정리는 기본적으로 provider에 맡깁니다. provider를 바꾸면 새 session이 Saturn 기록의 대화 전체와 남은 일, 예산에 맞춘 최근 도구 기록을 패킷으로 받습니다.
-4. 채팅을 Claude Code에서 Codex로 바꿉니다. 채팅은 사용자가 보는 대화이고, provider session은 그 뒤에서 열리고 닫힙니다. 새 session은 그 채팅을 마지막으로 본 뒤 바뀐 내용만 받습니다.
+3. 같은 provider session의 맥락 정리는 기본적으로 provider에 맡깁니다. provider 전환으로 새 session을 열면 Saturn 기록의 대화 전체와 남은 일, 예산에 맞춘 최근 도구 기록을 패킷으로 받습니다.
+4. 채팅을 Claude Code에서 Codex로 바꿉니다. 채팅은 사용자가 보는 대화이고, provider session은 그 뒤에서 열리고 닫힙니다. 보관된 기존 session을 재개하면 마지막으로 받은 기록 이후 다른 session에서 생긴 변경분만 받습니다.
 5. 터미널을 닫습니다. engine은 이미 보낸 입력을 계속 처리하고, 나중에 다시 붙을 수 있습니다.
 6. provider가 명령 실행이나 파일 수정을 요청합니다. Saturn은 provider 설정 대신 자체 권한 규칙을 적용하고, 규칙이 묻기로 정한 경우에만 허가 창을 보입니다.
 
